@@ -1,8 +1,13 @@
 use std::path::PathBuf;
+use std::fmt;
+use std::env;
+use std::fs;
+use std::io::{Error, ErrorKind};
 
 #[derive(Clone, Debug)]
 pub struct Simpath {
-    name: String
+    name: String,
+    dirs: Vec<PathBuf>
 }
 
 impl Simpath {
@@ -21,19 +26,23 @@ impl Simpath {
     ///
     /// fn main() {
     ///     let search_path = Simpath::new("PATH");
-    ///     let ls_file = search_path.find("ls");
+    ///     let ls_file = search_path.find_file("ls");
     ///     match ls_file {
-    ///         Some(path) => println!("'ls' was found at '{}'", path.display()),
-    ///         None       => println!("'ls' was not found on the search path '{}'",
-    ///                                 search_path.name())
+    ///         Ok(path) => println!("'ls' was found at '{}'", path.display()),
+    ///         Err(e)   => println!("{}", e)
     ///     }
     /// }
     /// ```
     ///
     pub fn new(var_name: &str) -> Self {
-        Simpath {
-            name: var_name.to_string()
-        }
+        let mut search_path = Simpath {
+            name: var_name.to_string(),
+            dirs: vec!()
+        };
+
+        search_path.add_from_env_var(var_name);
+
+        search_path
     }
 
     /// Get the name associated with the simpath. Note that this could be an empty String
@@ -41,16 +50,142 @@ impl Simpath {
         &self.name
     }
 
-    /// Try to find a file on the search path. If it is found `Some(PathBuf)` path to the file will
-    /// be returned. If it is not found then `None is returned.
-    pub fn find(&self, file_name: &str) -> Option<PathBuf> {
-        None // TODO
+    /// Get the list of directories that are included in the Search Path
+    ///
+    /// ```
+    /// extern crate simpath;
+    /// use simpath::Simpath;
+    ///
+    /// fn main() {
+    ///     let search_path = Simpath::new("PATH");
+    ///     println!("Directories in Search Path: {:?}", search_path.directories());
+    /// }
+    /// ```
+    ///
+    pub fn directories(&self) -> &Vec<PathBuf> {
+        &self.dirs
+    }
+
+    /// Try to find a file by filename (not full path) on a search path.
+    /// Searching for a file could cause errors, so Result<PathBuf, io::Error> is returned
+    /// If it is found `Ok(PathBuf)` path to the file will be returned.
+    /// If it is not found then `Err is returned.`
+    ///
+    /// ```
+    /// extern crate simpath;
+    /// use simpath::Simpath;
+    ///
+    /// fn main() {
+    ///     let search_path = Simpath::new("PATH");
+    ///     match search_path.find_file("my-file") {
+    ///         Ok(_found_dir) => println!("Didn't expect that!!"),
+    ///         Err(e)         => println!("{}", e.to_string())
+    ///     }
+    /// }
+    /// ```
+    ///
+    pub fn find_file(&self, file_name: &str) -> Result<PathBuf, Error> {
+        for search_dir in &self.dirs {
+            for entry in fs::read_dir(search_dir)? {
+                let file = entry?;
+                if file.path().to_str().unwrap() == file_name {
+                    return Ok(file.path())
+                }
+            }
+        }
+        Err(Error::new(ErrorKind::NotFound,
+                   format!("Could not find file '{}' in search path '{}'",
+                                 file_name, self.name)))
+    }
+
+    /// Add a directory to the list of directories to search for files.
+    /// If the directory passed does not exist, or is not a directory, or cannot be read then it
+    /// will be ignored.
+    ///
+    /// ```
+    /// extern crate simpath;
+    /// use simpath::Simpath;
+    ///
+    /// fn main() {
+    ///     let mut search_path = Simpath::new("PATH");
+    ///     search_path.add_directory(".");
+    ///     println!("Directories in Search Path: {:?}", search_path.directories());
+    /// }
+    /// ```
+    ///
+    pub fn add_directory(&mut self, dir: &str) {
+        let path = PathBuf::from(dir);
+        if path.exists() && path.is_dir() && path.read_dir().is_ok() {
+            self.dirs.push(path);
+        }
+    }
+
+    /// Check if a search path contains a directory
+    ///
+    ///
+    /// ```
+    /// extern crate simpath;
+    /// use simpath::Simpath;
+    ///
+    /// fn main() {
+    ///     let mut search_path = Simpath::new("FakeEnvVar");
+    ///     if search_path.contains(".") {
+    ///         println!("Well that's a surprise!");
+    ///     }
+    /// }
+    /// ```
+    pub fn contains(&self, dir: &str) -> bool {
+        for search_dir in &self.dirs {
+            if search_dir.to_str().unwrap() == dir {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Add entries to the search path, by reading from an environment variable.
+    /// The variable should have a set of ':' separated directory names.
+    /// To be added each direcory should exist and be readable.
+    ///
+    /// ```
+    /// extern crate simpath;
+    /// use simpath::Simpath;
+    ///
+    /// fn main() {
+    ///     let mut search_path = Simpath::new("MyPathName");
+    ///     search_path.add_from_env_var("PATH");
+    ///     if search_path.contains(".") {
+    ///         println!("'.' was in your 'PATH' and has been added to the search path called '{}'",
+    ///                  search_path.name());
+    ///     }
+    /// }
+    /// ```
+    ///
+    pub fn add_from_env_var(&mut self, var_name: &str) {
+        if let Ok(var_string) = env::var(var_name) {
+            for part in var_string.split(":") {
+                self.add_directory(part);
+            }
+        }
+    }
+}
+
+impl fmt::Display for Simpath {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Search Path: '{}', Directories: {{", self.name).unwrap();
+        for dir in &self.dirs {
+            write!(f, "'{}'", dir.display()).unwrap();
+
+        }
+        write!(f, "}}").unwrap();
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::Simpath;
+    use std::env;
 
     #[test]
     fn can_create() {
@@ -66,6 +201,47 @@ mod test {
     #[test]
     fn find_non_existant_file() {
         let path = Simpath::new("MyName");
-        assert_eq!(path.find("no_such_file"), None);
+        assert!(path.find_file("no_such_file").is_err());
+    }
+
+    #[test]
+    fn display_path() {
+        let path = Simpath::new("MyName");
+        println!("{}", path);
+    }
+
+    #[test]
+    fn directory_is_added() {
+        let mut path = Simpath::new("MyName");
+        assert!(path.directories().is_empty());
+        path.add_directory(".");
+        assert!(path.contains("."))
+    }
+
+    #[test]
+    fn cant_add_non_dir() {
+        let mut path = Simpath::new("MyName");
+        assert!(path.directories().is_empty());
+        path.add_directory("no-such-dir");
+        assert_eq!(path.contains("no-such-dir"), false);
+    }
+
+    #[test]
+    fn single_add_from_env_variable() {
+        let var_name = "MyPathEnv";
+        env::set_var(var_name, ".");
+        let mut path = Simpath::new("MyName");
+        path.add_from_env_var(var_name);
+        assert!(path.contains("."));
+    }
+
+    #[test]
+    fn multiple_add_from_env_variable() {
+        let var_name = "MyPathEnv";
+        env::set_var(var_name, ".:/");
+        let mut path = Simpath::new("MyName");
+        path.add_from_env_var(var_name);
+        assert!(path.contains("."));
+        assert!(path.contains("/"));
     }
 }
