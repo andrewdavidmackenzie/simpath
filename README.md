@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/andrewdavidmackenzie/simpath.svg?branch=master)](https://travis-ci.org/andrewdavidmackenzie/flow)
+[![Build Status](https://travis-ci.org/andrewdavidmackenzie/simpath.svg?branch=master)](https://travis-ci.org/andrewdavidmackenzie/simpath)
 
 # simpath
 A rust crate for simple path (like PATH and LD_PATH) use.
