@@ -26,7 +26,7 @@ impl Simpath {
     ///
     /// fn main() {
     ///     let search_path = Simpath::new("PATH");
-    ///     let ls_file = search_path.find_file("ls");
+    ///     let ls_file = search_path.find("ls");
     ///     match ls_file {
     ///         Ok(path) => println!("'ls' was found at '{}'", path.display()),
     ///         Err(e)   => println!("{}", e)
@@ -77,14 +77,14 @@ impl Simpath {
     ///
     /// fn main() {
     ///     let search_path = Simpath::new("PATH");
-    ///     match search_path.find_file("my-file") {
+    ///     match search_path.find("my-file") {
     ///         Ok(_found_dir) => println!("Didn't expect that!!"),
     ///         Err(e)         => println!("{}", e.to_string())
     ///     }
     /// }
     /// ```
     ///
-    pub fn find_file(&self, file_name: &str) -> Result<PathBuf, Error> {
+    pub fn find(&self, file_name: &str) -> Result<PathBuf, Error> {
         for search_dir in &self.dirs {
             for entry in fs::read_dir(search_dir)? {
                 let file = entry?;
@@ -94,7 +94,7 @@ impl Simpath {
             }
         }
         Err(Error::new(ErrorKind::NotFound,
-                   format!("Could not find file '{}' in search path '{}'",
+                   format!("Could not find '{}' in search path '{}'",
                                  file_name, self.name)))
     }
 
@@ -201,7 +201,7 @@ mod test {
     #[test]
     fn find_non_existant_file() {
         let path = Simpath::new("MyName");
-        assert!(path.find_file("no_such_file").is_err());
+        assert!(path.find("no_such_file").is_err());
     }
 
     #[test]
