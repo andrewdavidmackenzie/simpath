@@ -88,11 +88,14 @@ impl Simpath {
         for search_dir in &self.dirs {
             for entry in fs::read_dir(search_dir)? {
                 let file = entry?;
-                if file.path().to_str().unwrap() == file_name {
-                    return Ok(file.path())
+                if let Some(filename) = file.file_name().to_str() {
+                    if filename  == file_name {
+                        return Ok(file.path());
+                    }
                 }
             }
         }
+
         Err(Error::new(ErrorKind::NotFound,
                    format!("Could not find '{}' in search path '{}'",
                                  file_name, self.name)))
