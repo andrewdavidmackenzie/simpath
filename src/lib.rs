@@ -10,6 +10,13 @@ pub struct Simpath {
     dirs: Vec<PathBuf>
 }
 
+#[derive(Debug)]
+pub enum FileType {
+    File,
+    Directory,
+    Any
+}
+
 impl Simpath {
     /// Create a new simpath, providing the name of the environment variable to initialize the
     /// search path with. If an environment variable of that name exists and it will be parsed
@@ -85,20 +92,30 @@ impl Simpath {
     /// ```
     ///
     pub fn find(&self, file_name: &str) -> Result<PathBuf, Error> {
+        self.find_type(file_name, FileType::Any)
+    }
+
+    pub fn find_type(&self, file_name: &str, file_type: FileType) -> Result<PathBuf, Error> {
         for search_dir in &self.dirs {
             for entry in fs::read_dir(search_dir)? {
                 let file = entry?;
                 if let Some(filename) = file.file_name().to_str() {
                     if filename  == file_name {
-                        return Ok(file.path());
+                        let metadata = file.metadata()?;
+                        match file_type {
+                            FileType::Any => return Ok(file.path()),
+                            FileType::Directory if metadata.is_dir() => return Ok(file.path()),
+                            FileType::File if metadata.is_file() => return Ok(file.path()),
+                            _ => { /* keep looking */}
+                        }
                     }
                 }
             }
         }
 
         Err(Error::new(ErrorKind::NotFound,
-                   format!("Could not find '{}' in search path '{}'",
-                                 file_name, self.name)))
+                       format!("Could not find type '{:?}' called '{}' in search path '{}'",
+                               file_type, file_name, self.name)))
     }
 
     /// Add a directory to the list of directories to search for files.
