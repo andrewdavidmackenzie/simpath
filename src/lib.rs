@@ -194,7 +194,7 @@ impl fmt::Display for Simpath {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Search Path: '{}', Directories: {{", self.name).unwrap();
         for dir in &self.dirs {
-            write!(f, "'{}'", dir.display()).unwrap();
+            write!(f, "'{}', ", dir.display()).unwrap();
 
         }
         write!(f, "}}").unwrap();
@@ -343,5 +343,15 @@ mod test {
         path.add_from_env_var(var_name);
         assert!(path.contains("."));
         assert!(path.contains("/"));
+    }
+
+    #[test]
+    fn display_a_simpath() {
+        let var_name = "MyPathEnv";
+        env::set_var(var_name, ".:/");
+        let mut path = Simpath::new("MyName");
+        path.add_from_env_var(var_name);
+
+        println!("Simpath can be printed: {}", path);
     }
 }
