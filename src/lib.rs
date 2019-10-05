@@ -206,8 +206,6 @@ impl fmt::Display for Simpath {
 mod test {
     use super::Simpath;
     use std::env;
-    use std::fs;
-    use std::io::Write;
 
     #[test]
     fn can_create() {
