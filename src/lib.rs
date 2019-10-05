@@ -194,7 +194,7 @@ impl fmt::Display for Simpath {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Search Path: '{}', Directories: {{", self.name).unwrap();
         for dir in &self.dirs {
-            write!(f, "'{}'", dir.display()).unwrap();
+            write!(f, "'{}', ", dir.display()).unwrap();
 
         }
         write!(f, "}}").unwrap();
@@ -208,6 +208,7 @@ mod test {
     use std::env;
     use std::fs;
     use std::io::Write;
+    use FileType;
 
     #[test]
     fn can_create() {
@@ -249,7 +250,32 @@ mod test {
     }
 
     #[test]
-    fn single_dir_from_env_variable() {
+    fn find_dir_from_env_variable() {
+        // Create a temp dir for test
+        let temp_dir= tempdir::TempDir::new("simpath").unwrap().into_path();
+        let mut parent_dir = temp_dir.clone();
+        parent_dir.pop();
+
+        // Create a ENV path that includes that dir
+        let var_name = "MyPathEnv";
+        env::set_var(var_name, &parent_dir);
+
+        // create a simpath from the env var
+        let path = Simpath::new(var_name);
+
+        // Check that simpath can find the temp_dir
+        let temp_dir_name = format!("{}.{}",
+                                    temp_dir.file_stem().unwrap().to_str().unwrap(),
+                                    temp_dir.extension().unwrap().to_str().unwrap());
+        assert!(path.find_type(&temp_dir_name, FileType::Directory).is_ok(),
+                "Could not find the directory '.' in Path set from env var");
+
+        // clean-up
+        fs::remove_dir_all(temp_dir).unwrap();
+    }
+
+    #[test]
+    fn find_file_from_env_variable() {
         // Create a temp dir for test
         let temp_dir= tempdir::TempDir::new("simpath").unwrap().into_path();
 
@@ -267,10 +293,37 @@ mod test {
         file.write_all(b"test file contents").unwrap();
 
         // Check that simpath can find it
-        assert!(path.find(temp_filename).is_ok(), "Could not find the directory '.' in Path set from env var");
+        assert!(path.find_type(temp_filename, FileType::File).is_ok(),
+                "Could not find the directory '.' in Path set from env var");
 
         // clean-up
-        fs::remove_file(temp_file_path).unwrap();
+        fs::remove_dir_all(temp_dir).unwrap();
+    }
+
+    #[test]
+    fn find_any_from_env_variable() {
+        // Create a temp dir for test
+        let temp_dir= tempdir::TempDir::new("simpath").unwrap().into_path();
+
+        // Create a ENV path that includes that dir
+        let var_name = "MyPathEnv";
+        env::set_var(var_name, &temp_dir);
+
+        // create a simpath from the env var
+        let path = Simpath::new(var_name);
+
+        // Create a file in the directory
+        let temp_filename = "simpath.test";
+        let temp_file_path = format!("{}/{}", temp_dir.display(), temp_filename);
+        let mut file = fs::File::create(&temp_file_path).unwrap();
+        file.write_all(b"test file contents").unwrap();
+
+        // Check that simpath can find it
+        assert!(path.find(temp_filename).is_ok(),
+                "Could not find the directory '.' in Path set from env var");
+
+        // clean-up
+        fs::remove_dir_all(temp_dir).unwrap();
     }
 
     #[test]
@@ -290,5 +343,15 @@ mod test {
         path.add_from_env_var(var_name);
         assert!(path.contains("."));
         assert!(path.contains("/"));
+    }
+
+    #[test]
+    fn display_a_simpath() {
+        let var_name = "MyPathEnv";
+        env::set_var(var_name, ".:/");
+        let mut path = Simpath::new("MyName");
+        path.add_from_env_var(var_name);
+
+        println!("Simpath can be printed: {}", path);
     }
 }
