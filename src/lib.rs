@@ -249,6 +249,31 @@ mod test {
     }
 
     #[test]
+    fn single_dir_from_env_variable() {
+        // Create a temp dir for test
+        let temp_dir= tempdir::TempDir::new("simpath").unwrap().into_path();
+
+        // Create a ENV path that includes that dir
+        let var_name = "MyPathEnv";
+        env::set_var(var_name, &temp_dir);
+
+        // create a simpath from the env var
+        let path = Simpath::new(var_name);
+
+        // Create a file in the directory
+        let temp_filename = "simpath.test";
+        let temp_file_path = format!("{}/{}", temp_dir.display(), temp_filename);
+        let mut file = fs::File::create(&temp_file_path).unwrap();
+        file.write_all(b"test file contents").unwrap();
+
+        // Check that simpath can find it
+        assert!(path.find(temp_filename).is_ok(), "Could not find the directory '.' in Path set from env var");
+
+        // clean-up
+        fs::remove_file(temp_file_path).unwrap();
+    }
+
+    #[test]
     fn single_add_from_env_variable() {
         let var_name = "MyPathEnv";
         env::set_var(var_name, ".");
