@@ -10,7 +10,7 @@ let path = simppath::new("LD_PATH");
 let file = path.find("filename");
 ```
 
-##Methods
+## Methods
 Methods exist to find a file on the path as a PathBuf or as a URL with the "file:" scheme.
 
 The path can be extended with additional directories to search in, but this won't affect the value of the environment 

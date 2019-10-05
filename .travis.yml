@@ -1,11 +1,28 @@
 language: rust
 
+cache: cargo
+dist: trusty
+
 rust:
+  - nightly
+  - beta
   - stable
+
+sudo: false
 
 os:
   - osx
   - linux
+
+addons:
+  apt:
+    packages:
+      - libcurl4-openssl-dev
+      - libelf-dev
+      - libdw-dev
+      - cmake
+      - gcc
+      - binutils-dev
 
 branches:
   only:
@@ -16,7 +33,6 @@ script: cargo test
 notifications:
   email:
     - andrew@mackenzie-serres.net
-
 
 after_success:
   # Coverage report
