@@ -208,6 +208,7 @@ mod test {
     use std::env;
     use std::fs;
     use std::io::Write;
+    use FileType;
 
     #[test]
     fn can_create() {
@@ -249,7 +250,31 @@ mod test {
     }
 
     #[test]
-    fn single_dir_from_env_variable() {
+    fn find_dir_from_env_variable() {
+        // Create a temp dir for test
+        let temp_dir= tempdir::TempDir::new("simpath").unwrap().into_path();
+        let mut parent_dir = temp_dir.clone();
+        parent_dir.pop();
+
+        // Create a ENV path that includes that dir
+        let var_name = "MyPathEnv";
+        env::set_var(var_name, &parent_dir);
+
+        // create a simpath from the env var
+        let path = Simpath::new(var_name);
+
+        // Check that simpath can find the temp_dir
+        let temp_dir_name = format!("{}.{}",
+                                    temp_dir.file_stem().unwrap().to_str().unwrap(),
+                                    temp_dir.extension().unwrap().to_str().unwrap());
+        assert!(path.find_type(&temp_dir_name, FileType::Directory).is_ok(),
+                "Could not find the directory '.' in Path set from env var");
+
+        // clean-up
+        fs::remove_dir_all(temp_dir).unwrap();
+    }
+    #[test]
+    fn find_file_from_env_variable() {
         // Create a temp dir for test
         let temp_dir= tempdir::TempDir::new("simpath").unwrap().into_path();
 
@@ -270,7 +295,7 @@ mod test {
         assert!(path.find(temp_filename).is_ok(), "Could not find the directory '.' in Path set from env var");
 
         // clean-up
-        fs::remove_file(temp_file_path).unwrap();
+        fs::remove_dir_all(temp_dir).unwrap();
     }
 
     #[test]
