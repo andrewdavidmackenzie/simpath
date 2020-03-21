@@ -1,3 +1,10 @@
+#![deny(missing_docs)]
+//! Simpath - or Simple Path is a small library for creating, manipulating and using Unix style
+//! `Path`s.
+//!
+//! A `Path` is an environment variable (a String) with one or more colon-separated directories
+//! specified. They are usually used to find a file that resides in one of the directories.
+//!
 use std::path::PathBuf;
 use std::fmt;
 use std::env;
@@ -5,16 +12,33 @@ use std::fs;
 use std::io::{Error, ErrorKind};
 
 #[derive(Clone, Debug)]
+/// `Simpath` is the struct returned when you create a new on using a named environment variable
+/// which you then use to interact with the `Path`
 pub struct Simpath {
     name: String,
     dirs: Vec<PathBuf>
 }
 
 #[derive(Debug)]
+/// `FileType` can be used to find an entry in a path of a specific type (`Directory`, `File`) or
+/// of `Any` type
 pub enum FileType {
+    /// An entry in the `Path` of type `File`
     File,
+    /// An entry in the `Path` of type `Directory`
     Directory,
+    /// An entry in the `Path` of `Any` types
     Any
+}
+
+/// When validating a `Path` there can be the following types of `PathError`s returned
+pub enum PathError {
+    /// The syntax for a segment of the `Path` does not match a file system path
+    InvalidSyntax(String),
+    /// The `Path` entry does not exist on the file system
+    DoesNotExist(String),
+    /// The `Path` entry cannot be reads
+    CannotRead(String)
 }
 
 impl Simpath {
@@ -53,6 +77,15 @@ impl Simpath {
     }
 
     /// Get the name associated with the simpath. Note that this could be an empty String
+    /// ```
+    /// extern crate simpath;
+    /// use simpath::Simpath;
+    ///
+    /// fn main() {
+    ///     let search_path = Simpath::new("PATH");
+    ///     println!("Directories in Search Path: {:?}", search_path.name());
+    /// }
+    /// ```
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -95,6 +128,21 @@ impl Simpath {
         self.find_type(file_name, FileType::Any)
     }
 
+    /// find an entry of a specific `FileType` in a `Path`
+    ///
+    /// ```
+    /// extern crate simpath;
+    /// use simpath::Simpath;
+    ///
+    /// fn main() {
+    ///     use simpath::FileType;
+    /// let search_path = Simpath::new("PATH");
+    ///     match search_path.find_type("my-file", FileType::Directory) {
+    ///         Ok(_found_dir) => println!("Didn't expect that!!"),
+    ///         Err(e)         => println!("{}", e.to_string())
+    ///     }
+    /// }
+    /// ```
     pub fn find_type(&self, file_name: &str, file_type: FileType) -> Result<PathBuf, Error> {
         for search_dir in &self.dirs {
             for entry in fs::read_dir(search_dir)? {
@@ -140,9 +188,7 @@ impl Simpath {
         }
     }
 
-    /// Check if a search path contains a directory
-    ///
-    ///
+    /// Check if a search path contains an entry
     /// ```
     /// extern crate simpath;
     /// use simpath::Simpath;
@@ -154,9 +200,9 @@ impl Simpath {
     ///     }
     /// }
     /// ```
-    pub fn contains(&self, dir: &str) -> bool {
+    pub fn contains(&self, entry: &str) -> bool {
         for search_dir in &self.dirs {
-            if search_dir.to_str().unwrap() == dir {
+            if search_dir.to_str().unwrap() == entry {
                 return true;
             }
         }
