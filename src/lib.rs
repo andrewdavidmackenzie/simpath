@@ -134,7 +134,7 @@ impl Simpath {
     ///
     /// fn main() {
     ///     use simpath::FileType;
-    /// let search_path = Simpath::new("PATH");
+    ///     let search_path = Simpath::new("PATH");
     ///     match search_path.find_type("my-file", FileType::Directory) {
     ///         Ok(_found_dir) => println!("Didn't expect that!!"),
     ///         Err(e)         => println!("{}", e.to_string())
