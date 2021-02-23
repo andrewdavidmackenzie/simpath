@@ -1,17 +1,31 @@
 [![Build Status](https://travis-ci.org/andrewdavidmackenzie/simpath.svg?branch=master)](https://travis-ci.org/andrewdavidmackenzie/simpath)
 
-# simpath
-A rust crate for simple path (like PATH and LD_PATH) use.
+# Simpath
+A small and simple crate (in the spirit of my "simp*" crates) for search paths, like `$PATH` and `$LD_PATH`.
 
-Other crates can create a simpath that loads from the path defined as an environment variable using:
+# Example
+Create a `Simpath` that loads from the `$PATH` environment variable using:
 
 ```
-let path = simppath::new("LD_PATH");
+let path = simppath::new("PATH");
+```
+
+Then find a file called `filename` by searching the directories in `PATH` in order - as a `PathBuf`
+```
 let file = path.find("filename");
 ```
 
 ## Methods
-Methods exist to find a file on the path as a PathBuf or as a URL with the "file:" scheme.
+* add a new directory to the search path
+* get the name of the path 
+* get the list of directories in the path
+* find a file in the path
+* find a file of type `File` or type `Directory` on the path
+* check if the search path already contains a directory entry
+* add to the search path, loading the entries from an environment variable
+* validate that all directory entries in the path are valid, exist and can be read
 
-The path can be extended with additional directories to search in, but this won't affect the value of the environment 
-variable that was loaded initially.
+# Traits
+* implements the `fmt::Display` trait
+* Derives `Clone`
+* Derives `Debug`
