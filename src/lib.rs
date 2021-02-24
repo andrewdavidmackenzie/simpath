@@ -2,8 +2,9 @@
 //! Simpath - or Simple Path is a small library for creating, manipulating and using Unix style
 //! `Path`s.
 //!
-//! A `Path` is an environment variable (a String) with one or more colon-separated directories
-//! specified. They are usually used to find a file that resides in one of the directories.
+//! A `Path` is an environment variable (a String) with one or more directories specified.
+//! They are usually used to find a file that resides in one of the directories.
+//! On most platform the separator character is `:` but on Windows it is `;`
 //!
 use std::path::PathBuf;
 use std::fmt;
@@ -199,12 +200,7 @@ impl Simpath {
     /// }
     /// ```
     pub fn contains(&self, entry: &str) -> bool {
-        for search_dir in &self.entries {
-            if search_dir.to_str().unwrap() == entry {
-                return true;
-            }
-        }
-        false
+        self.entries.contains(&PathBuf::from(entry))
     }
 
     /// Add entries to the search path, by reading from an environment variable.
