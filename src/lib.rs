@@ -12,6 +12,11 @@ use std::env;
 use std::fs;
 use std::io::{Error, ErrorKind};
 
+// Character used to separate directories in a Path Environment variable on windows is ";"
+#[cfg(target_family = "windows")]
+const SEPARATOR_CHAR: char = ';';
+// Character used to separate directories in a Path Environment variable on linux/mac/unix is ":"
+#[cfg(not(target_family = "windows"))]
 const SEPARATOR_CHAR: char = ':';
 
 #[derive(Clone, Debug)]
