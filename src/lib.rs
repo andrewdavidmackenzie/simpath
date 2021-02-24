@@ -336,7 +336,7 @@ mod test {
                 "Could not find the directory '.' in Path set from env var");
 
         // clean-up
-        fs::remove_dir_all(temp_dir).unwrap();
+        let _ = fs::remove_dir_all(temp_dir);
     }
 
     #[test]
@@ -362,7 +362,7 @@ mod test {
                 "Could not find the directory '.' in Path set from env var");
 
         // clean-up
-        fs::remove_dir_all(temp_dir).unwrap();
+        let _ = fs::remove_dir_all(temp_dir);
     }
 
     #[test]
@@ -388,7 +388,7 @@ mod test {
                 "Could not find the directory '.' in Path set from env var");
 
         // clean-up
-        fs::remove_dir_all(temp_dir).unwrap();
+        let _ = fs::remove_dir_all(temp_dir);
     }
 
     #[test]
