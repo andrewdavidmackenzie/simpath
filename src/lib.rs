@@ -403,7 +403,7 @@ mod test {
     #[test]
     fn multiple_add_from_env_variable() {
         let var_name = "MyPathEnv";
-        env::set_var(var_name, ".:/");
+        env::set_var(var_name, format!(".{}/", SEPARATOR_CHAR));
         let mut path = Simpath::new("MyName");
         path.add_from_env_var(var_name);
         assert!(path.contains("."));
