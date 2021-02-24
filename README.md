@@ -15,7 +15,13 @@ Then find a file called `filename` by searching the directories in `PATH` in ord
 let file = path.find("filename");
 ```
 
-## Methods
+# Platforms
+The following platforms are supported and tested in CI
+* Linux
+* MacOS
+* Windows (with the ";" separator character used for parsing paths from environment variables)
+
+# Methods
 * add a new directory to the search path
 * get the name of the path 
 * get the list of directories in the path

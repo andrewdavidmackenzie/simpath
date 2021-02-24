@@ -2,14 +2,22 @@
 //! Simpath - or Simple Path is a small library for creating, manipulating and using Unix style
 //! `Path`s.
 //!
-//! A `Path` is an environment variable (a String) with one or more colon-separated directories
-//! specified. They are usually used to find a file that resides in one of the directories.
+//! A `Path` is an environment variable (a String) with one or more directories specified.
+//! They are usually used to find a file that resides in one of the directories.
+//! On most platform the separator character is `:` but on Windows it is `;`
 //!
 use std::path::PathBuf;
 use std::fmt;
 use std::env;
 use std::fs;
 use std::io::{Error, ErrorKind};
+
+// Character used to separate directories in a Path Environment variable on windows is ";"
+#[cfg(target_family = "windows")]
+const SEPARATOR_CHAR: char = ';';
+// Character used to separate directories in a Path Environment variable on linux/mac/unix is ":"
+#[cfg(not(target_family = "windows"))]
+const SEPARATOR_CHAR: char = ':';
 
 #[derive(Clone, Debug)]
 /// `Simpath` is the struct returned when you create a new on using a named environment variable
@@ -199,12 +207,7 @@ impl Simpath {
     /// }
     /// ```
     pub fn contains(&self, entry: &str) -> bool {
-        for search_dir in &self.entries {
-            if search_dir.to_str().unwrap() == entry {
-                return true;
-            }
-        }
-        false
+        self.entries.contains(&PathBuf::from(entry))
     }
 
     /// Add entries to the search path, by reading from an environment variable.
@@ -227,7 +230,7 @@ impl Simpath {
     ///
     pub fn add_from_env_var(&mut self, var_name: &str) {
         if let Ok(var_string) = env::var(var_name) {
-            for part in var_string.split(":") {
+            for part in var_string.split(SEPARATOR_CHAR) {
                 self.add_directory(part);
             }
         }
@@ -270,7 +273,7 @@ mod test {
     use std::env;
     use std::fs;
     use std::io::Write;
-    use FileType;
+    use ::{FileType, SEPARATOR_CHAR};
 
     #[test]
     fn can_create() {
@@ -333,7 +336,7 @@ mod test {
                 "Could not find the directory '.' in Path set from env var");
 
         // clean-up
-        fs::remove_dir_all(temp_dir).unwrap();
+        let _ = fs::remove_dir_all(temp_dir);
     }
 
     #[test]
@@ -359,7 +362,7 @@ mod test {
                 "Could not find the directory '.' in Path set from env var");
 
         // clean-up
-        fs::remove_dir_all(temp_dir).unwrap();
+        let _ = fs::remove_dir_all(temp_dir);
     }
 
     #[test]
@@ -385,7 +388,7 @@ mod test {
                 "Could not find the directory '.' in Path set from env var");
 
         // clean-up
-        fs::remove_dir_all(temp_dir).unwrap();
+        let _ = fs::remove_dir_all(temp_dir);
     }
 
     #[test]
@@ -400,7 +403,7 @@ mod test {
     #[test]
     fn multiple_add_from_env_variable() {
         let var_name = "MyPathEnv";
-        env::set_var(var_name, ".:/");
+        env::set_var(var_name, format!(".{}/", SEPARATOR_CHAR));
         let mut path = Simpath::new("MyName");
         path.add_from_env_var(var_name);
         assert!(path.contains("."));
@@ -410,7 +413,7 @@ mod test {
     #[test]
     fn display_a_simpath() {
         let var_name = "MyPathEnv";
-        env::set_var(var_name, ".:/");
+        env::set_var(var_name, format!(".{}/", SEPARATOR_CHAR));
         let mut path = Simpath::new("MyName");
         path.add_from_env_var(var_name);
 
@@ -430,7 +433,7 @@ mod test {
     #[test]
     fn one_entry_does_not_exist() {
         let var_name = "MyPathEnv";
-        env::set_var(var_name, ".:/foo");
+        env::set_var(var_name, format!(".{}/foo", SEPARATOR_CHAR));
         let mut path = Simpath::new("MyName");
         path.add_from_env_var(var_name);
 
