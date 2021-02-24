@@ -13,6 +13,7 @@ sudo: false
 os:
   - osx
   - linux
+  - windows
 
 addons:
   apt:
@@ -27,6 +28,9 @@ addons:
 branches:
   only:
     - "master"
+
+install:
+  - rustup component add clippy
 
 script:
   - cargo clippy
