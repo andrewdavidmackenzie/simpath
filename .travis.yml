@@ -28,7 +28,9 @@ branches:
   only:
     - "master"
 
-script: cargo test
+script:
+  - cargo clippy
+  - cargo test
 
 notifications:
   email:
