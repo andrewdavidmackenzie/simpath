@@ -12,6 +12,8 @@ use std::env;
 use std::fs;
 use std::io::{Error, ErrorKind};
 
+const SEPARATOR_CHAR: char = ':';
+
 #[derive(Clone, Debug)]
 /// `Simpath` is the struct returned when you create a new on using a named environment variable
 /// which you then use to interact with the `Path`
@@ -223,7 +225,7 @@ impl Simpath {
     ///
     pub fn add_from_env_var(&mut self, var_name: &str) {
         if let Ok(var_string) = env::var(var_name) {
-            for part in var_string.split(":") {
+            for part in var_string.split(SEPARATOR_CHAR) {
                 self.add_directory(part);
             }
         }
@@ -266,7 +268,7 @@ mod test {
     use std::env;
     use std::fs;
     use std::io::Write;
-    use FileType;
+    use ::{FileType, SEPARATOR_CHAR};
 
     #[test]
     fn can_create() {
@@ -406,7 +408,7 @@ mod test {
     #[test]
     fn display_a_simpath() {
         let var_name = "MyPathEnv";
-        env::set_var(var_name, ".:/");
+        env::set_var(var_name, format!(".{}/", SEPARATOR_CHAR));
         let mut path = Simpath::new("MyName");
         path.add_from_env_var(var_name);
 
@@ -426,7 +428,7 @@ mod test {
     #[test]
     fn one_entry_does_not_exist() {
         let var_name = "MyPathEnv";
-        env::set_var(var_name, ".:/foo");
+        env::set_var(var_name, format!(".{}/foo", SEPARATOR_CHAR));
         let mut path = Simpath::new("MyName");
         path.add_from_env_var(var_name);
 
