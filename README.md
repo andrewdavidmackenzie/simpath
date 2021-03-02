@@ -22,6 +22,8 @@ The following platforms are supported and tested in CI
 * Windows (with the ";" separator character used for parsing paths from environment variables)
 
 # Methods
+* create a search path, initialized from an environment variable
+* create a search path, initialized form an environment variable, using a custom separator character
 * add a new directory to the search path
 * get the name of the path 
 * get the list of directories in the path
@@ -29,6 +31,7 @@ The following platforms are supported and tested in CI
 * find a file of type `File` or type `Directory` on the path
 * check if the search path already contains a directory entry
 * add to the search path, loading the entries from an environment variable
+* add to the search path, loading the entries from an environment variable, using a custom separator character
 * validate that all directory entries in the path are valid, exist and can be read
 
 # Traits
