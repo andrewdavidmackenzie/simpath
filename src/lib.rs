@@ -287,6 +287,40 @@ impl Simpath {
         }
     }
 
+    /// Add entries to the search path, by reading them from an environment variable.
+    ///
+    /// The environment variable should have a set of entries separated by the specified
+    /// separator character.
+    ///
+    /// To be added each entry must exist and be readable.
+    ///
+    /// NOTE: The separator char is only used while parsing the specified environment variable and
+    /// *does not* modify the separator character in use in the Simpath after this function completes.
+    ///
+    /// ```
+    /// extern crate simpath;
+    /// use simpath::Simpath;
+    /// use std::env;
+    ///
+    /// fn main() {
+    ///     let mut search_path = Simpath::new("MyPathName");
+    ///     env::set_var("TEST", "/,.,~");
+    ///     search_path.add_from_env_var_with_separator("TEST", ',');
+    ///     if search_path.contains(".") {
+    ///         println!("'.' was in your 'TEST' environment variable and has been added to the search path called '{}'",
+    ///                  search_path.name());
+    ///     }
+    /// }
+    /// ```
+    ///
+    pub fn add_from_env_var_with_separator(&mut self, var_name: &str, separator: char) {
+        if let Ok(var_string) = env::var(var_name) {
+            for part in var_string.split(separator) {
+                self.add_directory(part);
+            }
+        }
+    }
+
     /// `validate` checks that all the entries in the `Path` are of a valid syntax, exist on
     /// the file system and can be read
     pub fn validate(&self) -> Vec<PathError> {
@@ -389,7 +423,8 @@ mod test {
                                     temp_dir.file_stem().unwrap().to_str().unwrap(),
                                     temp_dir.extension().unwrap().to_str().unwrap());
         assert!(path.find_type(&temp_dir_name, FileType::Directory).is_ok(),
-                "Could not find the directory '.' in Path set from env var");
+                format!("Could not find the directory '{}' in Path set from env var",
+                        temp_dir.display()));
 
         // clean-up
         let _ = fs::remove_dir_all(temp_dir);
