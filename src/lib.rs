@@ -56,7 +56,7 @@ impl Simpath {
     /// as a ':' separated list of paths to search. Only paths detected as directories will
     /// be used, not files.
     ///
-    /// If an environment variable of that name is not found, a new simpath will be created anyway
+    /// If an environment variable of that name is *not* found, a new simpath will be created anyway
     /// and it can have directories added to it programatically and used in the normal fashion to
     /// search for files
     ///
@@ -77,6 +77,45 @@ impl Simpath {
     pub fn new(var_name: &str) -> Self {
         let mut search_path = Simpath {
             separator: DEFAULT_SEPARATOR_CHAR,
+            name: var_name.to_string(),
+            entries: vec!()
+        };
+
+        search_path.add_from_env_var(var_name);
+
+        search_path
+    }
+
+    /// Create a new simpath, providing the name of the environment variable to initialize the
+    /// search path with and the separator character for this search path to be used from here on.
+    /// If an environment variable of that name exists and it will be parsed as a list of paths to
+    /// search. Only paths detected as directories will be used, not files.
+    ///
+    /// If an environment variable of that name is *not* found, a new simpath will be created anyway
+    /// and it can have directories added to it programatically and used in the normal fashion to
+    /// search for files.
+    ///
+    /// In all cases, the separator char for this search path will be set to `separator` from here on.
+    ///
+    /// ```
+    /// extern crate simpath;
+    /// use simpath::Simpath;
+    /// use std::env;
+    ///
+    /// fn main() {
+    ///     env::set_var("TEST", "/,.,~");
+    ///     let search_path = Simpath::new("TEST");
+    ///     let two = search_path.find(".");
+    ///     match two {
+    ///         Ok(path) => println!("'.' was found at '{}'", path.display()),
+    ///         Err(e)   => println!("{}", e)
+    ///     }
+    /// }
+    /// ```
+    ///
+    pub fn new_with_separator(var_name: &str, separator: char) -> Self {
+        let mut search_path = Simpath {
+            separator,
             name: var_name.to_string(),
             entries: vec!()
         };
@@ -293,6 +332,11 @@ mod test {
     }
 
     #[test]
+    fn can_create_with_separator() {
+        Simpath::new_with_separator("PATH", ':');
+    }
+
+    #[test]
     fn name_is_saved() {
         let path = Simpath::new("MyName");
         assert_eq!(path.name(), "MyName");
@@ -417,6 +461,16 @@ mod test {
         let var_name = "MyPathEnv";
         env::set_var(var_name, format!(".{}/", DEFAULT_SEPARATOR_CHAR));
         let mut path = Simpath::new("MyName");
+        path.add_from_env_var(var_name);
+        assert!(path.contains("."));
+        assert!(path.contains("/"));
+    }
+
+    #[test]
+    fn multiple_add_from_env_variable_separator() {
+        let var_name = "MyPathEnv";
+        env::set_var(var_name, format!(".{}/", ','));
+        let mut path = Simpath::new_with_separator("MyName", ',');
         path.add_from_env_var(var_name);
         assert!(path.contains("."));
         assert!(path.contains("/"));
