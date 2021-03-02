@@ -4,7 +4,9 @@
 //!
 //! A `Path` is an environment variable (a String) with one or more directories specified.
 //! They are usually used to find a file that resides in one of the directories.
-//! On most platform the separator character is `:` but on Windows it is `;`
+//! On most platform the default separator character is `:` but on Windows it is `;`
+//!
+//! If you wish to separate entries with a different separator, it can be modified via API.
 //!
 use std::path::PathBuf;
 use std::fmt;
@@ -17,12 +19,13 @@ use std::io::{Error, ErrorKind};
 const SEPARATOR_CHAR: char = ';';
 // Character used to separate directories in a Path Environment variable on linux/mac/unix is ":"
 #[cfg(not(target_family = "windows"))]
-const SEPARATOR_CHAR: char = ':';
+const DEFAULT_SEPARATOR_CHAR: char = ':';
 
 #[derive(Clone, Debug)]
 /// `Simpath` is the struct returned when you create a new on using a named environment variable
 /// which you then use to interact with the `Path`
 pub struct Simpath {
+    separator: char,
     name: String,
     entries: Vec<PathBuf>
 }
@@ -73,6 +76,7 @@ impl Simpath {
     ///
     pub fn new(var_name: &str) -> Self {
         let mut search_path = Simpath {
+            separator: DEFAULT_SEPARATOR_CHAR,
             name: var_name.to_string(),
             entries: vec!()
         };
@@ -195,6 +199,7 @@ impl Simpath {
     }
 
     /// Check if a search path contains an entry
+    ///
     /// ```
     /// extern crate simpath;
     /// use simpath::Simpath;
@@ -210,9 +215,16 @@ impl Simpath {
         self.entries.contains(&PathBuf::from(entry))
     }
 
-    /// Add entries to the search path, by reading from an environment variable.
-    /// The variable should have a set of ':' separated directory names.
-    /// To be added each direcory should exist and be readable.
+    /// Add entries to the search path, by reading them from an environment variable.
+    ///
+    /// The environment variable should have a set of entries separated by the separator character.
+    /// By default the separator char is `":"` (on non-windows platforms) and `";"` (on windows)
+    /// but it can be modified after creation of search path.
+    ///
+    /// The environment variable is parsed using the separator char set at the time this function
+    /// is called.
+    ///
+    /// To be added each entry must exist and be readable.
     ///
     /// ```
     /// extern crate simpath;
@@ -230,7 +242,7 @@ impl Simpath {
     ///
     pub fn add_from_env_var(&mut self, var_name: &str) {
         if let Ok(var_string) = env::var(var_name) {
-            for part in var_string.split(SEPARATOR_CHAR) {
+            for part in var_string.split(self.separator) {
                 self.add_directory(part);
             }
         }
@@ -273,7 +285,7 @@ mod test {
     use std::env;
     use std::fs;
     use std::io::Write;
-    use ::{FileType, SEPARATOR_CHAR};
+    use ::{FileType, DEFAULT_SEPARATOR_CHAR};
 
     #[test]
     fn can_create() {
@@ -403,7 +415,7 @@ mod test {
     #[test]
     fn multiple_add_from_env_variable() {
         let var_name = "MyPathEnv";
-        env::set_var(var_name, format!(".{}/", SEPARATOR_CHAR));
+        env::set_var(var_name, format!(".{}/", DEFAULT_SEPARATOR_CHAR));
         let mut path = Simpath::new("MyName");
         path.add_from_env_var(var_name);
         assert!(path.contains("."));
@@ -413,7 +425,7 @@ mod test {
     #[test]
     fn display_a_simpath() {
         let var_name = "MyPathEnv";
-        env::set_var(var_name, format!(".{}/", SEPARATOR_CHAR));
+        env::set_var(var_name, format!(".{}/", DEFAULT_SEPARATOR_CHAR));
         let mut path = Simpath::new("MyName");
         path.add_from_env_var(var_name);
 
@@ -433,7 +445,7 @@ mod test {
     #[test]
     fn one_entry_does_not_exist() {
         let var_name = "MyPathEnv";
-        env::set_var(var_name, format!(".{}/foo", SEPARATOR_CHAR));
+        env::set_var(var_name, format!(".{}/foo", DEFAULT_SEPARATOR_CHAR));
         let mut path = Simpath::new("MyName");
         path.add_from_env_var(var_name);
 
