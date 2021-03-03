@@ -34,6 +34,14 @@ The following platforms are supported and tested in CI
 * add to the search path, loading the entries from an environment variable, using a custom separator character
 * validate that all directory entries in the path are valid, exist and can be read
 
+## Optional methods
+These methods are activated by the "urls" feature, which is included by default. 
+
+To remove that code and dependencies disable all default features using the `cargo` command line option
+`--no-default-features` or including `default-features = false` in your `Cargo.toml` section for `Simpath`
+
+* Add a URL to the search path
+
 # Traits
 * implements the `fmt::Display` trait
 * Derives `Clone`
