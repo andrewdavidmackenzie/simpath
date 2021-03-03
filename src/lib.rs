@@ -365,6 +365,8 @@ impl Simpath {
     /// ```
     ///
     pub fn add_from_env_var(&mut self, var_name: &str) {
+        println!("Trying to add from env var named '{}'", var_name);
+
         if let Ok(var_string) = env::var(var_name) {
             for part in var_string.split(self.separator) {
                 #[cfg(not(feature = "urls"))]
@@ -383,6 +385,8 @@ impl Simpath {
                     Err(_) => self.add_directory(part) /* default to being a directory path */
                 }
             }
+        } else {
+            println!("Could not load env var called '{}'", var_name);
         }
     }
 
