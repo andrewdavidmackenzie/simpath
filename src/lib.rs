@@ -513,7 +513,7 @@ mod test {
                                     temp_dir.file_stem().unwrap().to_str().unwrap(),
                                     temp_dir.extension().unwrap().to_str().unwrap());
         assert!(path.find_type(&temp_dir_name, FileType::Directory).is_ok(),
-                "Could not find the temp directory  in Path set from env var");
+                "Could not find the simpath temp directory in Path set from env var");
 
         // clean-up
         let _ = fs::remove_dir_all(temp_dir);
@@ -532,14 +532,14 @@ mod test {
         let path = Simpath::new(var_name);
 
         // Create a file in the directory
-        let temp_filename = "simpath.test";
+        let temp_filename = "testfile";
         let temp_file_path = format!("{}/{}", temp_dir.display(), temp_filename);
         let mut file = fs::File::create(&temp_file_path).unwrap();
         file.write_all(b"test file contents").unwrap();
 
-        // Check that simpath can find it
+        // Check that simpath can find the file
         assert!(path.find_type(temp_filename, FileType::File).is_ok(),
-                "Could not find the directory '.' in Path set from env var");
+                "Could not find 'testfile' in Path set from env var");
 
         // clean-up
         let _ = fs::remove_dir_all(temp_dir);
@@ -558,14 +558,14 @@ mod test {
         let path = Simpath::new(var_name);
 
         // Create a file in the directory
-        let temp_filename = "simpath.test";
+        let temp_filename = "testfile";
         let temp_file_path = format!("{}/{}", temp_dir.display(), temp_filename);
         let mut file = fs::File::create(&temp_file_path).unwrap();
         file.write_all(b"test file contents").unwrap();
 
         // Check that simpath can find it
         assert!(path.find(temp_filename).is_ok(),
-                "Could not find the directory '.' in Path set from env var");
+                "Could not find the 'testfile' in Path set from env var");
 
         // clean-up
         let _ = fs::remove_dir_all(temp_dir);
