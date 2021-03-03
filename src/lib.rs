@@ -365,6 +365,7 @@ impl Simpath {
             for part in var_string.split(self.separator) {
                 #[cfg(not(feature = "urls"))]
                 self.add_directory(part);
+                println!("Directory '{}' Added to the path", part);
 
                 #[cfg(feature = "urls")]
                 match Url::parse(part) {
