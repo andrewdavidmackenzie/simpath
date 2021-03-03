@@ -544,11 +544,11 @@ mod test {
         // Create a temp dir for test
         let temp_dir = tempdir::TempDir::new("simpath").unwrap().into_path();
 
-        // Create a ENV path that includes that dir
-        let var_name = "MyPath";
+        // Create a ENV path that includes the path to the temp dir
+        let var_name = "MYPATH";
         env::set_var(var_name, &temp_dir);
 
-        println!("ENV VAR '{}' set to value: '{}'", var_name, env::var(var_name)
+        println!("${} value is: '{}'", var_name, env::var(var_name)
             .expect("ENV VAR could not be found"));
 
         // create a simpath from the env var

@@ -1,19 +1,17 @@
 language: rust
-
-cache: cargo
-dist: trusty
+dist: bionic
 
 rust:
   - nightly
   - beta
   - stable
 
-sudo: false
-
 os:
   - osx
   - linux
   - windows
+
+sudo: false
 
 addons:
   apt:
