@@ -271,6 +271,7 @@ impl Simpath {
     ///
     pub fn add_directory(&mut self, dir: &str) {
         let path = PathBuf::from(dir);
+        println!("Path: '{}' attempting to add to the path", path.display());
         if path.exists() && path.is_dir() && path.read_dir().is_ok() {
             println!("Directory: '{}' Added to the path", path.display());
             self.directories.push(path);
@@ -544,7 +545,7 @@ mod test {
         let temp_dir = tempdir::TempDir::new("simpath").unwrap().into_path();
 
         // Create a ENV path that includes that dir
-        let var_name = "%MyPath%";
+        let var_name = "MyPath";
         env::set_var(var_name, &temp_dir);
 
         println!("ENV VAR '{}' set to value: '{}'", var_name, env::var(var_name)
