@@ -139,6 +139,12 @@ impl Simpath {
         search_path
     }
 
+    /// Get the currently set separator character that is used when parsing entries from an environment
+    /// variable
+    pub fn separator(&self) -> char {
+        self.separator
+    }
+
     /// Get the name associated with the simpath. Note that this could be an empty String
     /// ```
     /// extern crate simpath;
@@ -438,20 +444,12 @@ impl Simpath {
 
 impl fmt::Display for Simpath {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Search Path: '{}', Directories: {{", self.name)?;
-        for dir in &self.directories {
-            write!(f, "'{}', ", dir.display())?;
-        }
+        write!(f, "Search Path '{}': Directories: {:?}", self.name, self.directories)?;
 
         #[cfg(feature = "urls")]
-        {
-            write!(f, "URLs: {{")?;
-            for url in &self.urls {
-                write!(f, "'{}', ", url)?;
-            }
-        }
+        write!(f, ", URLs: {:?}", self.urls)?;
 
-        write!(f, "}}")
+        Ok(())
     }
 }
 
@@ -524,7 +522,7 @@ mod test {
         // create a simpath from the env var
         let path = Simpath::new(var_name);
 
-        println!("Path '{}' set to: '{}'", var_name, path);
+        println!("{}", path);
 
         // Check that simpath can find the temp_dir
         let temp_dir_name = format!("{}.{}",
@@ -552,7 +550,8 @@ mod test {
         // create a simpath from the env var
         let path = Simpath::new(var_name);
 
-        println!("Path '{}' set to: '{}'", var_name, path);
+        println!("Separator character is '{}'", path.separator());
+        println!("{}", path);
 
         // Create a file in the directory
         let temp_filename = "testfile";
@@ -583,7 +582,7 @@ mod test {
         // create a simpath from the env var
         let path = Simpath::new(var_name);
 
-        println!("Path '{}' set to: '{}'", var_name, path);
+        println!("{}", path);
 
         // Create a file in the directory
         let temp_filename = "testfile";
