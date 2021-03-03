@@ -273,6 +273,7 @@ impl Simpath {
         let path = PathBuf::from(dir);
         if path.exists() && path.is_dir() && path.read_dir().is_ok() {
             self.directories.push(path);
+            println!("Directory: '{}' Added to the path", part);
         } else {
             println!("Directory: '{}' skipped as doesn't exist or is not readable", path.display());
         }
@@ -367,7 +368,6 @@ impl Simpath {
             for part in var_string.split(self.separator) {
                 #[cfg(not(feature = "urls"))]
                 self.add_directory(part);
-                println!("Directory '{}' Added to the path", part);
 
                 #[cfg(feature = "urls")]
                 match Url::parse(part) {
