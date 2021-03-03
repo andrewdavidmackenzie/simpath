@@ -10,7 +10,7 @@ repository = "https://github.com/andrewdavidmackenzie/simpath/"
 readme = "README.md"
 
 [features]
-default = ["urls"]
+default = []
 urls = ["curl"]
 
 [dependencies]
