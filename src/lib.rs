@@ -271,12 +271,8 @@ impl Simpath {
     ///
     pub fn add_directory(&mut self, dir: &str) {
         let path = PathBuf::from(dir);
-        println!("Path: '{}' attempting to add to the path", path.display());
         if path.exists() && path.is_dir() && path.read_dir().is_ok() {
-            println!("Directory: '{}' Added to the path", path.display());
             self.directories.push(path);
-        } else {
-            println!("Directory: '{}' skipped as doesn't exist or is not readable", path.display());
         }
     }
 
@@ -365,10 +361,7 @@ impl Simpath {
     /// ```
     ///
     pub fn add_from_env_var(&mut self, var_name: &str) {
-        println!("Trying to add from env var named '{}'", var_name);
-
         if let Ok(var_string) = env::var(var_name) {
-            println!("Parts: {:?}", var_string.split(self.separator));
             for part in var_string.split(self.separator) {
                 #[cfg(not(feature = "urls"))]
                 self.add_directory(part);
@@ -380,16 +373,12 @@ impl Simpath {
                             #[cfg(feature = "urls")]
                             "http" | "https" => self.add_url(&url),
                             "file" => self.add_directory(url.path()),
-                            _ => {
-                                println!("Parsed as URL! {}", url);
-                                /* parsed as Url, but we don't support the scheme */ }
+                            _ => self.add_directory(part)
                         }
                     }
                     Err(_) => self.add_directory(part) /* default to being a directory path */
                 }
             }
-        } else {
-            println!("Could not load env var called '{}'", var_name);
         }
     }
 
