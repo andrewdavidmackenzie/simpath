@@ -272,8 +272,8 @@ impl Simpath {
     pub fn add_directory(&mut self, dir: &str) {
         let path = PathBuf::from(dir);
         if path.exists() && path.is_dir() && path.read_dir().is_ok() {
-            self.directories.push(path);
             println!("Directory: '{}' Added to the path", path.display());
+            self.directories.push(path);
         } else {
             println!("Directory: '{}' skipped as doesn't exist or is not readable", path.display());
         }
