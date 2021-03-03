@@ -273,7 +273,7 @@ impl Simpath {
         let path = PathBuf::from(dir);
         if path.exists() && path.is_dir() && path.read_dir().is_ok() {
             self.directories.push(path);
-            println!("Directory: '{}' Added to the path", part);
+            println!("Directory: '{}' Added to the path", path.display());
         } else {
             println!("Directory: '{}' skipped as doesn't exist or is not readable", path.display());
         }
