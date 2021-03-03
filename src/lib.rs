@@ -513,8 +513,7 @@ mod test {
                                     temp_dir.file_stem().unwrap().to_str().unwrap(),
                                     temp_dir.extension().unwrap().to_str().unwrap());
         assert!(path.find_type(&temp_dir_name, FileType::Directory).is_ok(),
-                format!("Could not find the directory '{}' in Path set from env var",
-                        temp_dir.display()));
+                "Could not find the temp directory  in Path set from env var");
 
         // clean-up
         let _ = fs::remove_dir_all(temp_dir);
