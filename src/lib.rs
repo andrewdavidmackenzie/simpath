@@ -368,6 +368,7 @@ impl Simpath {
         println!("Trying to add from env var named '{}'", var_name);
 
         if let Ok(var_string) = env::var(var_name) {
+            println!("Parts: {:?}", var_string.split(self.separator));
             for part in var_string.split(self.separator) {
                 #[cfg(not(feature = "urls"))]
                 self.add_directory(part);
@@ -379,7 +380,9 @@ impl Simpath {
                             #[cfg(feature = "urls")]
                             "http" | "https" => self.add_url(&url),
                             "file" => self.add_directory(url.path()),
-                            _ => { /* parsed as Url, but we don't support the scheme */ }
+                            _ => {
+                                println!("Parsed as URL! {}", url);
+                                /* parsed as Url, but we don't support the scheme */ }
                         }
                     }
                     Err(_) => self.add_directory(part) /* default to being a directory path */
