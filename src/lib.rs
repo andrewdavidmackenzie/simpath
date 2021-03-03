@@ -516,7 +516,7 @@ mod test {
         parent_dir.pop();
 
         // Create a ENV path that includes that dir
-        let var_name = "MyPathEnv";
+        let var_name = "MyPath";
         env::set_var(var_name, &parent_dir);
 
         println!("ENV VAR '{}' set to value: '{}'", var_name, env::var(var_name)
@@ -544,7 +544,7 @@ mod test {
         let temp_dir = tempdir::TempDir::new("simpath").unwrap().into_path();
 
         // Create a ENV path that includes that dir
-        let var_name = "MyPathEnv";
+        let var_name = "%MyPath%";
         env::set_var(var_name, &temp_dir);
 
         println!("ENV VAR '{}' set to value: '{}'", var_name, env::var(var_name)
@@ -571,12 +571,12 @@ mod test {
     }
 
     #[test]
-    fn find_any_from_env_variable() {
+    fn find_dir_using_any_from_env_variable() {
         // Create a temp dir for test
         let temp_dir = tempdir::TempDir::new("simpath").unwrap().into_path();
 
         // Create a ENV path that includes that dir
-        let var_name = "MyPathEnv";
+        let var_name = "MyPath";
         env::set_var(var_name, &temp_dir);
 
         println!("ENV VAR '{}' set to value: '{}'", var_name, env::var(var_name)
