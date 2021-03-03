@@ -315,6 +315,10 @@ impl Simpath {
     /// }
     /// ```
     pub fn contains(&self, entry: &str) -> bool {
+        #[cfg(not(feature = "urls"))]
+        return self.directories.contains(&PathBuf::from(entry));
+
+        #[cfg(feature = "urls")]
         if self.directories.contains(&PathBuf::from(entry)) {
             true
         } else {
@@ -353,6 +357,10 @@ impl Simpath {
     pub fn add_from_env_var(&mut self, var_name: &str) {
         if let Ok(var_string) = env::var(var_name) {
             for part in var_string.split(self.separator) {
+                #[cfg(not(feature = "urls"))]
+                self.add_directory(part);
+
+                #[cfg(feature = "urls")]
                 match Url::parse(part) {
                     Ok(url) => {
                         match url.scheme() {
@@ -417,6 +425,7 @@ impl Simpath {
             }
         }
 
+        #[cfg(feature = "urls")]
         for url in &self.urls {
             if !Self::exists(&url) {
                 errors.push(PathError::DoesNotExist(url.to_string()));
@@ -429,16 +438,20 @@ impl Simpath {
 
 impl fmt::Display for Simpath {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Search Path: '{}', Directories: {{", self.name).unwrap();
+        write!(f, "Search Path: '{}', Directories: {{", self.name)?;
         for dir in &self.directories {
-            write!(f, "'{}', ", dir.display()).unwrap();
+            write!(f, "'{}', ", dir.display())?;
         }
-        write!(f, "URLs: {{").unwrap();
-        for url in &self.urls {
-            write!(f, "'{}', ", url).unwrap();
+
+        #[cfg(feature = "urls")]
+        {
+            write!(f, "URLs: {{")?;
+            for url in &self.urls {
+                write!(f, "'{}', ", url)?;
+            }
         }
-        write!(f, "}}").unwrap();
-        Ok(())
+
+        write!(f, "}}")
     }
 }
 
@@ -505,8 +518,13 @@ mod test {
         let var_name = "MyPathEnv";
         env::set_var(var_name, &parent_dir);
 
+        println!("ENV VAR '{}' set to value: '{}'", var_name, env::var(var_name)
+            .expect("ENV VAR could not be found"));
+
         // create a simpath from the env var
         let path = Simpath::new(var_name);
+
+        println!("Path '{}' set to: '{}'", var_name, path);
 
         // Check that simpath can find the temp_dir
         let temp_dir_name = format!("{}.{}",
@@ -528,8 +546,13 @@ mod test {
         let var_name = "MyPathEnv";
         env::set_var(var_name, &temp_dir);
 
+        println!("ENV VAR '{}' set to value: '{}'", var_name, env::var(var_name)
+            .expect("ENV VAR could not be found"));
+
         // create a simpath from the env var
         let path = Simpath::new(var_name);
+
+        println!("Path '{}' set to: '{}'", var_name, path);
 
         // Create a file in the directory
         let temp_filename = "testfile";
@@ -554,8 +577,13 @@ mod test {
         let var_name = "MyPathEnv";
         env::set_var(var_name, &temp_dir);
 
+        println!("ENV VAR '{}' set to value: '{}'", var_name, env::var(var_name)
+            .expect("ENV VAR could not be found"));
+
         // create a simpath from the env var
         let path = Simpath::new(var_name);
+
+        println!("Path '{}' set to: '{}'", var_name, path);
 
         // Create a file in the directory
         let temp_filename = "testfile";
