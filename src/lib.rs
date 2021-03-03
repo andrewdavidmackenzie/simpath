@@ -33,6 +33,7 @@ pub struct Simpath {
     separator: char,
     name: String,
     directories: Vec<PathBuf>,
+    #[cfg(feature = "urls")]
     urls: Vec<Url>,
 }
 
@@ -44,8 +45,9 @@ pub enum FileType {
     File,
     /// An entry in the `Simpath` of type `Directory`
     Directory,
+    #[cfg(feature = "urls")]
     /// An entry in a `Simpath` of type Url
-    URL,
+    Url,
     /// An entry in the `Simpath` of `Any` types
     Any,
 }
@@ -87,6 +89,7 @@ impl Simpath {
             separator: DEFAULT_SEPARATOR_CHAR,
             name: var_name.to_string(),
             directories: Vec::<PathBuf>::new(),
+            #[cfg(feature = "urls")]
             urls: Vec::<Url>::new(),
         };
 
@@ -127,6 +130,7 @@ impl Simpath {
             separator,
             name: var_name.to_string(),
             directories: Vec::<PathBuf>::new(),
+            #[cfg(feature = "urls")]
             urls: Vec::<Url>::new(),
         };
 
