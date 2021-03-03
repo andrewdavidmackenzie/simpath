@@ -95,6 +95,8 @@ impl Simpath {
 
         search_path.add_from_env_var(var_name);
 
+        println!("Search path created as: {}", search_path);
+
         search_path
     }
 
