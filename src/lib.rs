@@ -373,7 +373,7 @@ impl Simpath {
                             #[cfg(feature = "urls")]
                             "http" | "https" => self.add_url(&url),
                             "file" => self.add_directory(url.path()),
-                            _ => self.add_directory(part)
+                            _ => { /* parsed as Url, but we don't support the scheme */ }
                         }
                     }
                     Err(_) => self.add_directory(part) /* default to being a directory path */
@@ -444,12 +444,20 @@ impl Simpath {
 
 impl fmt::Display for Simpath {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Search Path '{}': Directories: {:?}", self.name, self.directories)?;
+        write!(f, "Search Path: '{}', Directories: {{", self.name)?;
+        for dir in &self.directories {
+            write!(f, "'{}', ", dir.display())?;
+        }
 
         #[cfg(feature = "urls")]
-        write!(f, ", URLs: {:?}", self.urls)?;
+        {
+            write!(f, "URLs: {{")?;
+            for url in &self.urls {
+                write!(f, "'{}', ", url)?;
+            }
+        }
 
-        Ok(())
+        write!(f, "}}")
     }
 }
 
@@ -513,7 +521,7 @@ mod test {
         parent_dir.pop();
 
         // Create a ENV path that includes that dir
-        let var_name = "MyPath";
+        let var_name = "MyPathEnv";
         env::set_var(var_name, &parent_dir);
 
         println!("ENV VAR '{}' set to value: '{}'", var_name, env::var(var_name)
@@ -522,7 +530,7 @@ mod test {
         // create a simpath from the env var
         let path = Simpath::new(var_name);
 
-        println!("{}", path);
+        println!("Path '{}' set to: '{}'", var_name, path);
 
         // Check that simpath can find the temp_dir
         let temp_dir_name = format!("{}.{}",
@@ -540,18 +548,17 @@ mod test {
         // Create a temp dir for test
         let temp_dir = tempdir::TempDir::new("simpath").unwrap().into_path();
 
-        // Create a ENV path that includes the path to the temp dir
-        let var_name = "MYPATH";
+        // Create a ENV path that includes that dir
+        let var_name = "MyPathEnv";
         env::set_var(var_name, &temp_dir);
 
-        println!("${} value is: '{}'", var_name, env::var(var_name)
+        println!("ENV VAR '{}' set to value: '{}'", var_name, env::var(var_name)
             .expect("ENV VAR could not be found"));
 
         // create a simpath from the env var
         let path = Simpath::new(var_name);
 
-        println!("Separator character is '{}'", path.separator());
-        println!("{}", path);
+        println!("Path '{}' set to: '{}'", var_name, path);
 
         // Create a file in the directory
         let temp_filename = "testfile";
@@ -568,12 +575,12 @@ mod test {
     }
 
     #[test]
-    fn find_dir_using_any_from_env_variable() {
+    fn find_any_from_env_variable() {
         // Create a temp dir for test
         let temp_dir = tempdir::TempDir::new("simpath").unwrap().into_path();
 
         // Create a ENV path that includes that dir
-        let var_name = "MyPath";
+        let var_name = "MyPathEnv";
         env::set_var(var_name, &temp_dir);
 
         println!("ENV VAR '{}' set to value: '{}'", var_name, env::var(var_name)
@@ -582,7 +589,7 @@ mod test {
         // create a simpath from the env var
         let path = Simpath::new(var_name);
 
-        println!("{}", path);
+        println!("Path '{}' set to: '{}'", var_name, path);
 
         // Create a file in the directory
         let temp_filename = "testfile";
