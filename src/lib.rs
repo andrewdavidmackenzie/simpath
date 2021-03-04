@@ -292,7 +292,6 @@ impl Simpath {
 
     #[cfg(feature = "urls")]
     fn resource_exists(url: &Url) -> Result<(), Error> {
-        println!("Checking resource exists at Utl: {}", url);
         let mut easy = Easy2::new(Collector(Vec::new()));
         easy.get(true)?;
 
@@ -300,8 +299,6 @@ impl Simpath {
         easy.perform()?;
         let response_code = easy.response_code()
             .map_err(|e| Error::new(ErrorKind::NotFound, e.to_string()))?;
-
-        println!("Response code = {}", response_code);
 
         // Consider 301 - Permanently Moved as the resource NOT being at this Url
         // An option to consider is asking the request library to follow the redirect.
@@ -531,7 +528,7 @@ mod test {
     }
 
     #[test]
-    fn display_path() {
+    fn display_empty_path() {
         let path = Simpath::new("MyName");
         println!("{}", path);
     }
@@ -656,7 +653,7 @@ mod test {
     }
 
     #[test]
-    fn display_a_simpath() {
+    fn display_a_simpath_with entries() {
         let var_name = "MyPath";
         env::set_var(var_name, format!(".{}/", DEFAULT_SEPARATOR_CHAR));
         let path = Simpath::new(var_name);
