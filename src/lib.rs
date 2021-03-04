@@ -653,7 +653,7 @@ mod test {
     }
 
     #[test]
-    fn display_a_simpath_with entries() {
+    fn display_a_simpath_with_entries() {
         let var_name = "MyPath";
         env::set_var(var_name, format!(".{}/", DEFAULT_SEPARATOR_CHAR));
         let path = Simpath::new(var_name);
