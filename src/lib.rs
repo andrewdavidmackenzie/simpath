@@ -9,15 +9,31 @@
 //! If you wish to separate entries with a different separator, it can be modified via API.
 //!
 #[cfg(feature = "urls")]
+extern crate curl;
+#[cfg(feature = "urls")]
 extern crate url;
 
-use std::path::PathBuf;
-use std::fmt;
 use std::env;
+use std::fmt;
 use std::fs;
 use std::io::{Error, ErrorKind};
+use std::path::PathBuf;
+
+#[cfg(feature = "urls")]
+use curl::easy::{Easy2, Handler, WriteError};
 #[cfg(feature = "urls")]
 use url::Url;
+
+#[cfg(feature = "urls")]
+struct Collector(Vec<u8>);
+
+#[cfg(feature = "urls")]
+impl Handler for Collector {
+    fn write(&mut self, data: &[u8]) -> std::result::Result<usize, WriteError> {
+        self.0.extend_from_slice(data);
+        Ok(data.len())
+    }
+}
 
 // Character used to separate directories in a Path Environment variable on windows is ";"
 #[cfg(target_family = "windows")]
@@ -26,9 +42,9 @@ const DEFAULT_SEPARATOR_CHAR: char = ';';
 #[cfg(not(target_family = "windows"))]
 const DEFAULT_SEPARATOR_CHAR: char = ':';
 
-#[derive(Clone, Debug)]
 /// `Simpath` is the struct returned when you create a new on using a named environment variable
 /// which you then use to interact with the `Simpath`
+#[derive(Clone, Debug)]
 pub struct Simpath {
     separator: char,
     name: String,
@@ -37,19 +53,30 @@ pub struct Simpath {
     urls: Vec<Url>,
 }
 
-#[derive(Debug)]
 /// `FileType` can be used to find an entry in a path of a specific type (`Directory`, `File`, `URL`)
 /// or of `Any` type
+#[derive(Debug, PartialEq)]
 pub enum FileType {
     /// An entry in the `Simpath` of type `File`
     File,
     /// An entry in the `Simpath` of type `Directory`
     Directory,
-    #[cfg(feature = "urls")]
-    /// An entry in a `Simpath` of type Url
-    Url,
+    /// An entry in the `Simpath` of type `Url`
+    Resource,
     /// An entry in the `Simpath` of `Any` types
     Any,
+}
+
+/// `FoundType` indicates what type of entry was found
+#[derive(Debug, PartialEq)]
+pub enum FoundType {
+    /// An entry in the `Simpath` of type `File`
+    File(PathBuf),
+    /// An entry in the `Simpath` of type `Directory`
+    Directory(PathBuf),
+    #[cfg(feature = "urls")]
+    /// An entry in the `Simpath` of type `Url`
+    Resource(Url),
 }
 
 /// When validating a `Simpath` there can be the following types of `PathError`s returned
@@ -78,7 +105,7 @@ impl Simpath {
     ///     let search_path = Simpath::new("PATH");
     ///     let ls_file = search_path.find("ls");
     ///     match ls_file {
-    ///         Ok(path) => println!("'ls' was found at '{}'", path.display()),
+    ///         Ok(found) => println!("'ls' was found at '{:?}'", found),
     ///         Err(e)   => println!("{}", e)
     ///     }
     /// }
@@ -119,12 +146,11 @@ impl Simpath {
     ///     let search_path = Simpath::new("TEST");
     ///     let two = search_path.find(".");
     ///     match two {
-    ///         Ok(path) => println!("'.' was found at '{}'", path.display()),
+    ///         Ok(found) => println!("'.' was found at '{:?}'", found),
     ///         Err(e)   => println!("{}", e)
     ///     }
     /// }
     /// ```
-    ///
     pub fn new_with_separator(var_name: &str, separator: char) -> Self {
         let mut search_path = Simpath {
             separator,
@@ -170,7 +196,6 @@ impl Simpath {
     ///     println!("Directories in Search Path: {:?}", search_path.directories());
     /// }
     /// ```
-    ///
     pub fn directories(&self) -> &Vec<PathBuf> {
         &self.directories
     }
@@ -189,15 +214,14 @@ impl Simpath {
     ///     println!("URLs in Search Path: {:?}", search_path.urls());
     /// }
     /// ```
-    ///
     pub fn urls(&self) -> &Vec<Url> {
         &self.urls
     }
 
-    /// Try to find a file by filename (not full path) on a search path.
-    /// Searching for a file could cause errors, so Result<PathBuf, io::Error> is returned
-    /// If it is found `Ok(PathBuf)` path to the file will be returned.
-    /// If it is not found then `Err is returned.`
+    /// Try to find a file or resource by name (not full path) on a search path.
+    /// Searching for a file could cause errors, so Result<FoundType, io::Error> is returned
+    /// If it is found `Ok(FoundType)` is returned indicating where the resource/file can be found.
+    /// If it is not found then `Err` is returned.
     ///
     /// ```
     /// extern crate simpath;
@@ -211,8 +235,7 @@ impl Simpath {
     ///     }
     /// }
     /// ```
-    ///
-    pub fn find(&self, file_name: &str) -> Result<PathBuf, Error> {
+    pub fn find(&self, file_name: &str) -> Result<FoundType, Error> {
         self.find_type(file_name, FileType::Any)
     }
 
@@ -231,20 +254,33 @@ impl Simpath {
     ///     }
     /// }
     /// ```
-    pub fn find_type(&self, file_name: &str, file_type: FileType) -> Result<PathBuf, Error> {
-        for search_dir in &self.directories {
-            for entry in fs::read_dir(search_dir)? {
-                let file = entry?;
-                if let Some(filename) = file.file_name().to_str() {
-                    if filename == file_name {
-                        let metadata = file.metadata()?;
-                        match file_type {
-                            FileType::Any => return Ok(file.path()),
-                            FileType::Directory if metadata.is_dir() => return Ok(file.path()),
-                            FileType::File if metadata.is_file() => return Ok(file.path()),
-                            _ => { /* keep looking */ }
+    pub fn find_type(&self, file_name: &str, file_type: FileType) -> Result<FoundType, Error> {
+        if file_type == FileType::File || file_type == FileType::Directory || file_type == FileType::Any {
+            for search_dir in &self.directories {
+                for entry in fs::read_dir(search_dir)? {
+                    let file = entry?;
+                    if let Some(filename) = file.file_name().to_str() {
+                        if filename == file_name {
+                            let metadata = file.metadata()?;
+                            match file_type {
+                                FileType::Any => return Ok(FoundType::File(file.path())),
+                                FileType::Directory if metadata.is_dir() => return Ok(FoundType::Directory(file.path())),
+                                FileType::File if metadata.is_file() => return Ok(FoundType::File(file.path())),
+                                _ => { /* keep looking */ }
+                            }
                         }
                     }
+                }
+            }
+        }
+
+        #[cfg(feature = "urls")]
+        if file_type == FileType::Resource || file_type == FileType::Any {
+            for base_url in &self.urls {
+                let url = base_url.join(file_name)
+                    .map_err(|e| Error::new(ErrorKind::NotFound, e.to_string()))?;
+                if Self::resource_exists(&url).is_ok() {
+                    return Ok(FoundType::Resource(url));
                 }
             }
         }
@@ -252,6 +288,68 @@ impl Simpath {
         Err(Error::new(ErrorKind::NotFound,
                        format!("Could not find type '{:?}' called '{}' in search path '{}'",
                                file_type, file_name, self.name)))
+    }
+
+    #[cfg(feature = "urls")]
+    fn resource_exists(url: &Url) -> Result<(), Error> {
+        println!("Checking resource exists at Utl: {}", url);
+        let mut easy = Easy2::new(Collector(Vec::new()));
+        easy.get(true)?;
+
+        easy.url(&url.to_string())?;
+        easy.perform()?;
+        let response_code = easy.response_code()
+            .map_err(|e| Error::new(ErrorKind::NotFound, e.to_string()))?;
+
+        println!("Response code = {}", response_code);
+
+        // Consider 301 - Permanently Moved as the resource NOT being at this Url
+        // An option to consider is asking the request library to follow the redirect.
+        match response_code {
+            200..=299 => Ok(()),
+            error_code => Err(Error::new(ErrorKind::NotFound,
+                                         format!("Response code: {} from '{}'", error_code, url)))
+        }
+    }
+
+    /// Add an to the search path.
+    ///
+    /// if "urls" feature is enabled:
+    ///     If it parses as as web Url it will be added to the list of
+    ///     base Urls to search, otherwise it will be added to the list of directories to search.
+    /// if "urls" feature is *not* enabled:
+    ///     It is assumed to be a directory and added using `add_directory()`
+    ///
+    /// ```
+    /// extern crate simpath;
+    /// use simpath::Simpath;
+    ///
+    /// fn main() {
+    ///     let mut search_path = Simpath::new("PATH");
+    ///     search_path.add(".");
+    ///
+    /// #[cfg(feature = "urls")]
+    ///     search_path.add("http://ibm.com");
+    ///
+    ///     println!("{}", search_path);
+    /// }
+    /// ```
+    pub fn add(&mut self, entry: &str) {
+        #[cfg(not(feature = "urls"))]
+            self.add_directory(entry);
+
+        #[cfg(feature = "urls")]
+        match Url::parse(entry) {
+            Ok(url) => {
+                match url.scheme() {
+                    #[cfg(feature = "urls")]
+                    "http" | "https" => self.add_url(&url),
+                    "file" => self.add_directory(url.path()),
+                    _ => self.add_directory(entry)
+                }
+            }
+            Err(_) => self.add_directory(entry) /* default to being a directory path */
+        }
     }
 
     /// Add a directory to the list of directories to search for files.
@@ -268,7 +366,6 @@ impl Simpath {
     ///     println!("Directories in Search Path: {:?}", search_path.directories());
     /// }
     /// ```
-    ///
     pub fn add_directory(&mut self, dir: &str) {
         let path = PathBuf::from(dir);
         if path.exists() && path.is_dir() && path.read_dir().is_ok() {
@@ -277,8 +374,7 @@ impl Simpath {
     }
 
     #[cfg(feature = "urls")]
-    /// Add a Url to the list of Urls to search for files.
-    /// If the Url passed cannot be read then it will be ignored.
+    /// Add a Url to the list of Base Urls to be used when searching for resources.
     ///
     /// ```
     /// extern crate simpath;
@@ -293,18 +389,8 @@ impl Simpath {
     ///     println!("Urls in Search Path: {:?}", search_path.urls());
     /// }
     /// ```
-    ///
     pub fn add_url(&mut self, url: &Url) {
-        if Self::exists(&url) {
-            self.urls.push(url.clone());
-        }
-    }
-
-    #[cfg(feature = "urls")]
-    // Check if a Url exists on the web
-    fn exists(_url: &Url) -> bool {
-        true
-        // TODO
+        self.urls.push(url.clone());
     }
 
     /// Check if a search path contains an entry
@@ -322,7 +408,7 @@ impl Simpath {
     /// ```
     pub fn contains(&self, entry: &str) -> bool {
         #[cfg(not(feature = "urls"))]
-        return self.directories.contains(&PathBuf::from(entry));
+            return self.directories.contains(&PathBuf::from(entry));
 
         #[cfg(feature = "urls")]
         if self.directories.contains(&PathBuf::from(entry)) {
@@ -359,25 +445,10 @@ impl Simpath {
     ///     }
     /// }
     /// ```
-    ///
     pub fn add_from_env_var(&mut self, var_name: &str) {
         if let Ok(var_string) = env::var(var_name) {
             for part in var_string.split(self.separator) {
-                #[cfg(not(feature = "urls"))]
-                self.add_directory(part);
-
-                #[cfg(feature = "urls")]
-                match Url::parse(part) {
-                    Ok(url) => {
-                        match url.scheme() {
-                            #[cfg(feature = "urls")]
-                            "http" | "https" => self.add_url(&url),
-                            "file" => self.add_directory(url.path()),
-                            _ => { /* parsed as Url, but we don't support the scheme */ }
-                        }
-                    }
-                    Err(_) => self.add_directory(part) /* default to being a directory path */
-                }
+                self.add(part);
             }
         }
     }
@@ -407,7 +478,6 @@ impl Simpath {
     ///     }
     /// }
     /// ```
-    ///
     pub fn add_from_env_var_with_separator(&mut self, var_name: &str, separator: char) {
         if let Ok(var_string) = env::var(var_name) {
             for part in var_string.split(separator) {
@@ -415,59 +485,28 @@ impl Simpath {
             }
         }
     }
-
-    /// `validate` checks that all the entries in the `Simpath` are of a valid syntax,
-    /// can be found and and can be read
-    pub fn validate(&self) -> Vec<PathError> {
-        let mut errors = vec!();
-
-        for dir in &self.directories {
-            if !dir.exists() {
-                errors.push(PathError::DoesNotExist(dir.to_str().unwrap().into()));
-            }
-
-            if fs::metadata(dir).is_err() {
-                errors.push(PathError::CannotRead(dir.to_str().unwrap().into()));
-            }
-        }
-
-        #[cfg(feature = "urls")]
-        for url in &self.urls {
-            if !Self::exists(&url) {
-                errors.push(PathError::DoesNotExist(url.to_string()));
-            }
-        }
-
-        errors
-    }
 }
 
 impl fmt::Display for Simpath {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Search Path: '{}', Directories: {{", self.name)?;
-        for dir in &self.directories {
-            write!(f, "'{}', ", dir.display())?;
-        }
+        write!(f, "Search Path '{}': Directories: {:?}", self.name, self.directories)?;
 
         #[cfg(feature = "urls")]
-        {
-            write!(f, "URLs: {{")?;
-            for url in &self.urls {
-                write!(f, "'{}', ", url)?;
-            }
-        }
+        write!(f, ", URLs: {:?}", self.urls)?;
 
-        write!(f, "}}")
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod test {
-    use super::Simpath;
     use std::env;
     use std::fs;
     use std::io::Write;
-    use ::{FileType, DEFAULT_SEPARATOR_CHAR};
+
+    use ::{DEFAULT_SEPARATOR_CHAR, FileType};
+
+    use super::Simpath;
 
     #[test]
     fn can_create() {
@@ -521,16 +560,11 @@ mod test {
         parent_dir.pop();
 
         // Create a ENV path that includes that dir
-        let var_name = "MyPathEnv";
+        let var_name = "MyPath";
         env::set_var(var_name, &parent_dir);
-
-        println!("ENV VAR '{}' set to value: '{}'", var_name, env::var(var_name)
-            .expect("ENV VAR could not be found"));
 
         // create a simpath from the env var
         let path = Simpath::new(var_name);
-
-        println!("Path '{}' set to: '{}'", var_name, path);
 
         // Check that simpath can find the temp_dir
         let temp_dir_name = format!("{}.{}",
@@ -548,17 +582,12 @@ mod test {
         // Create a temp dir for test
         let temp_dir = tempdir::TempDir::new("simpath").unwrap().into_path();
 
-        // Create a ENV path that includes that dir
-        let var_name = "MyPathEnv";
+        // Create a ENV path that includes the path to the temp dir
+        let var_name = "MYPATH";
         env::set_var(var_name, &temp_dir);
-
-        println!("ENV VAR '{}' set to value: '{}'", var_name, env::var(var_name)
-            .expect("ENV VAR could not be found"));
 
         // create a simpath from the env var
         let path = Simpath::new(var_name);
-
-        println!("Path '{}' set to: '{}'", var_name, path);
 
         // Create a file in the directory
         let temp_filename = "testfile";
@@ -575,21 +604,16 @@ mod test {
     }
 
     #[test]
-    fn find_any_from_env_variable() {
+    fn find_dir_using_any_from_env_variable() {
         // Create a temp dir for test
         let temp_dir = tempdir::TempDir::new("simpath").unwrap().into_path();
 
         // Create a ENV path that includes that dir
-        let var_name = "MyPathEnv";
+        let var_name = "MyPath";
         env::set_var(var_name, &temp_dir);
-
-        println!("ENV VAR '{}' set to value: '{}'", var_name, env::var(var_name)
-            .expect("ENV VAR could not be found"));
 
         // create a simpath from the env var
         let path = Simpath::new(var_name);
-
-        println!("Path '{}' set to: '{}'", var_name, path);
 
         // Create a file in the directory
         let temp_filename = "testfile";
@@ -607,7 +631,7 @@ mod test {
 
     #[test]
     fn single_add_from_env_variable() {
-        let var_name = "MyPathEnv";
+        let var_name = "MyPath";
         env::set_var(var_name, ".");
         let path = Simpath::new(var_name);
         assert!(path.contains("."));
@@ -615,7 +639,7 @@ mod test {
 
     #[test]
     fn multiple_add_from_env_variable() {
-        let var_name = "MyPathEnv";
+        let var_name = "MyPath";
         env::set_var(var_name, format!(".{}/", DEFAULT_SEPARATOR_CHAR));
         let path = Simpath::new(var_name);
         assert!(path.contains("."));
@@ -624,8 +648,8 @@ mod test {
 
     #[test]
     fn multiple_add_from_env_variable_separator() {
-        let var_name = "MyPathEnv";
-        env::set_var(var_name, format!(".{}/", ','));
+        let var_name = "MyPath";
+        env::set_var(var_name, ".,/");
         let path = Simpath::new_with_separator(var_name, ',');
         assert!(path.contains("."));
         assert!(path.contains("/"));
@@ -633,7 +657,7 @@ mod test {
 
     #[test]
     fn display_a_simpath() {
-        let var_name = "MyPathEnv";
+        let var_name = "MyPath";
         env::set_var(var_name, format!(".{}/", DEFAULT_SEPARATOR_CHAR));
         let path = Simpath::new(var_name);
         println!("Simpath can be printed: {}", path);
@@ -641,7 +665,7 @@ mod test {
 
     #[test]
     fn entry_does_not_exist() {
-        let var_name = "MyPathEnv";
+        let var_name = "MyPath";
         env::set_var(var_name, "/foo");
         let path = Simpath::new(var_name);
         assert_eq!(path.directories().len(), 0);
@@ -649,16 +673,74 @@ mod test {
 
     #[test]
     fn one_entry_does_not_exist() {
-        let var_name = "MyPathEnv";
+        let var_name = "MyPath";
         env::set_var(var_name, format!(".{}/foo", DEFAULT_SEPARATOR_CHAR));
         let path = Simpath::new(var_name);
         assert_eq!(path.directories().len(), 1);
-        assert_eq!(path.validate().len(), 0);
+        assert!(!path.contains("/foo"));
     }
 
-    // TODO add tests for Urls methods and others with Urls in them...
     #[cfg(feature = "urls")]
     mod url_tests {
+        use std::env;
+        use url::Url;
+        use FileType;
+        use super::Simpath;
 
+        const BASE_URL: &str = "https://www.ibm.com";
+        const EXISTING_RESOURCE: &str = "/es-es";
+
+        #[test]
+        fn create_from_env() {
+            let var_name = "MyPath";
+            env::set_var(var_name, BASE_URL);
+            let path = Simpath::new_with_separator(var_name, ',');
+            assert_eq!(path.urls().len(), 1);
+            assert_eq!(path.directories().len(), 0);
+            assert!(path.urls().contains(&Url::parse(BASE_URL)
+                .expect("Could not parse URL")));
+        }
+
+        #[test]
+        fn add_url_that_exists() {
+            let mut path = Simpath::new_with_separator("test", ',');
+            path.add_url(&Url::parse(BASE_URL)
+                .expect("Could not parse Url"));
+            assert_eq!(path.urls().len(), 1);
+            assert_eq!(path.directories().len(), 0);
+            assert!(path.urls().contains(&Url::parse(BASE_URL)
+                .expect("Could not parse URL")));
+        }
+
+        #[test]
+        fn find_resource_not_exist() {
+            let mut search_path = Simpath::new("TEST");
+            search_path.add_url(&Url::parse(BASE_URL).expect("Could not parse Url"));
+            assert!(search_path.find_type("/no-way-this-exists", FileType::Resource).is_err(),
+                    "should not find the resource");
+        }
+
+        #[test]
+        fn find_existing_resource() {
+            let mut search_path = Simpath::new("TEST");
+            search_path.add_url(&Url::parse(BASE_URL).expect("Could not parse Url"));
+            search_path.find_type(EXISTING_RESOURCE, FileType::Resource).expect("Could not find '/'");
+        }
+
+        #[test]
+        fn contains_url_that_exists() {
+            let var_name = "MyPath";
+            env::set_var(var_name, BASE_URL);
+            let path = Simpath::new_with_separator(var_name, ',');
+            assert!(path.contains(BASE_URL));
+        }
+
+        #[test]
+        fn display_path_with_directory_and_url() {
+            let var_name = "MyPath";
+            env::set_var(var_name, format!("~,{}", BASE_URL));
+            let path = Simpath::new_with_separator(var_name, ',');
+            println!("{}", path);
+        }
     }
 }
