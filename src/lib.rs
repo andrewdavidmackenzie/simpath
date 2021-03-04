@@ -293,7 +293,7 @@ impl Simpath {
     #[cfg(feature = "urls")]
     fn resource_exists(url: &Url) -> Result<(), Error> {
         let mut easy = Easy2::new(Collector(Vec::new()));
-        easy.get(true)?;
+        easy.nobody(true)?;
 
         easy.url(&url.to_string())?;
         easy.perform()?;
