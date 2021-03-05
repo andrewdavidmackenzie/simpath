@@ -366,7 +366,9 @@ impl Simpath {
     pub fn add_directory(&mut self, dir: &str) {
         let path = PathBuf::from(dir);
         if path.exists() && path.is_dir() && path.read_dir().is_ok() {
-            self.directories.push(path);
+            if let Ok(canonical) = path.canonicalize() {
+                self.directories.push(canonical);
+            }
         }
     }
 
@@ -538,7 +540,9 @@ mod test {
         let mut path = Simpath::new("MyName");
         assert!(path.directories().is_empty());
         path.add_directory(".");
-        assert!(path.contains("."))
+        assert!(path.contains(env::current_dir()
+            .expect("Could not get current working directory").to_str()
+            .expect("Could not convert path to &str")))
     }
 
     #[test]
@@ -631,7 +635,9 @@ mod test {
         let var_name = "MyPath";
         env::set_var(var_name, ".");
         let path = Simpath::new(var_name);
-        assert!(path.contains("."));
+        assert!(path.contains(env::current_dir()
+            .expect("Could not get current working directory").to_str()
+            .expect("Could not convert path to &str")))
     }
 
     #[test]
@@ -639,7 +645,9 @@ mod test {
         let var_name = "MyPath";
         env::set_var(var_name, format!(".{}/", DEFAULT_SEPARATOR_CHAR));
         let path = Simpath::new(var_name);
-        assert!(path.contains("."));
+        assert!(path.contains(env::current_dir()
+            .expect("Could not get current working directory").to_str()
+            .expect("Could not convert path to &str")));
         assert!(path.contains("/"));
     }
 
@@ -648,7 +656,9 @@ mod test {
         let var_name = "MyPath";
         env::set_var(var_name, ".,/");
         let path = Simpath::new_with_separator(var_name, ',');
-        assert!(path.contains("."));
+        assert!(path.contains(env::current_dir()
+            .expect("Could not get current working directory").to_str()
+            .expect("Could not convert path to &str")));
         assert!(path.contains("/"));
     }
 
