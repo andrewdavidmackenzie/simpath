@@ -367,6 +367,7 @@ impl Simpath {
         let path = PathBuf::from(dir);
         if path.exists() && path.is_dir() && path.read_dir().is_ok() {
             if let Ok(canonical) = path.canonicalize() {
+                println!("Canonicalized version of {} is {}", dir, canonical.display());
                 self.directories.push(canonical);
             }
         }
