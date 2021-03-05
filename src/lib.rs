@@ -540,8 +540,11 @@ mod test {
         let mut path = Simpath::new("MyName");
         assert!(path.directories().is_empty());
         path.add_directory(".");
-        assert!(path.contains(&env::current_dir()
-            .expect("Could not get current working directory").to_string_lossy().to_string()));
+        let cwd = env::current_dir()
+            .expect("Could not get current working directory").to_string_lossy().to_string();
+        println!("cwd = {}", cwd);
+        println!("path = {}", path);
+        assert!(path.contains(&cwd));
     }
 
     #[test]
