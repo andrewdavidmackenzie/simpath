@@ -366,7 +366,9 @@ impl Simpath {
     pub fn add_directory(&mut self, dir: &str) {
         let path = PathBuf::from(dir);
         if path.exists() && path.is_dir() && path.read_dir().is_ok() {
-            self.directories.push(path);
+            if let Ok(canonical) = path.canonicalize() {
+                self.directories.push(canonical);
+            }
         }
     }
 
@@ -404,18 +406,18 @@ impl Simpath {
     /// }
     /// ```
     pub fn contains(&self, entry: &str) -> bool {
-        #[cfg(not(feature = "urls"))]
-            return self.directories.contains(&PathBuf::from(entry));
+        if let Ok(canonical) = PathBuf::from(entry).canonicalize() {
+            if self.directories.contains(&canonical) {
+                return true;
+            }
+        }
 
         #[cfg(feature = "urls")]
-        if self.directories.contains(&PathBuf::from(entry)) {
-            true
-        } else {
-            if let Ok(url_entry) = Url::parse(entry) {
-                return self.urls.contains(&url_entry);
-            }
-            false
+        if let Ok(url_entry) = Url::parse(entry) {
+            return self.urls.contains(&url_entry);
         }
+
+        false
     }
 
     /// Add entries to the search path, by reading them from an environment variable.
@@ -538,7 +540,9 @@ mod test {
         let mut path = Simpath::new("MyName");
         assert!(path.directories().is_empty());
         path.add_directory(".");
-        assert!(path.contains("."))
+        let cwd = env::current_dir()
+            .expect("Could not get current working directory").to_string_lossy().to_string();
+        assert!(path.contains(&cwd));
     }
 
     #[test]
@@ -631,7 +635,8 @@ mod test {
         let var_name = "MyPath";
         env::set_var(var_name, ".");
         let path = Simpath::new(var_name);
-        assert!(path.contains("."));
+        assert!(path.contains(&env::current_dir()
+            .expect("Could not get current working directory").to_string_lossy().to_string()));
     }
 
     #[test]
@@ -639,7 +644,8 @@ mod test {
         let var_name = "MyPath";
         env::set_var(var_name, format!(".{}/", DEFAULT_SEPARATOR_CHAR));
         let path = Simpath::new(var_name);
-        assert!(path.contains("."));
+        assert!(path.contains(&env::current_dir()
+            .expect("Could not get current working directory").to_string_lossy().to_string()));
         assert!(path.contains("/"));
     }
 
@@ -648,7 +654,8 @@ mod test {
         let var_name = "MyPath";
         env::set_var(var_name, ".,/");
         let path = Simpath::new_with_separator(var_name, ',');
-        assert!(path.contains("."));
+        assert!(path.contains(&env::current_dir()
+            .expect("Could not get current working directory").to_string_lossy().to_string()));
         assert!(path.contains("/"));
     }
 
@@ -680,8 +687,11 @@ mod test {
     #[cfg(feature = "urls")]
     mod url_tests {
         use std::env;
+
         use url::Url;
+
         use FileType;
+
         use super::Simpath;
 
         const BASE_URL: &str = "https://www.ibm.com";

@@ -1,4 +1,7 @@
 [![Build Status](https://travis-ci.org/andrewdavidmackenzie/simpath.svg?branch=master)](https://travis-ci.org/andrewdavidmackenzie/simpath)
+[![Generic badge](https://img.shields.io/badge/macos-supported-Green.svg)](https://shields.io/)
+[![Generic badge](https://img.shields.io/badge/linux-supported-Green.svg)](https://shields.io/)
+[![Generic badge](https://img.shields.io/badge/windows-supported-Green.svg)](https://shields.io/)
 
 # Simpath
 A small and simple crate (in the spirit of my "simp*" crates) for search paths, like `$PATH` and `$LD_PATH`.
