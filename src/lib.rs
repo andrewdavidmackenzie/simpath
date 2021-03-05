@@ -367,7 +367,6 @@ impl Simpath {
         let path = PathBuf::from(dir);
         if path.exists() && path.is_dir() && path.read_dir().is_ok() {
             if let Ok(canonical) = path.canonicalize() {
-                println!("Canonicalized version of {} is {}", dir, canonical.display());
                 self.directories.push(canonical);
             }
         }
@@ -407,18 +406,18 @@ impl Simpath {
     /// }
     /// ```
     pub fn contains(&self, entry: &str) -> bool {
-        #[cfg(not(feature = "urls"))]
-            return self.directories.contains(&PathBuf::from(entry));
+        if let Ok(canonical) = PathBuf::from(entry).canonicalize() {
+            if self.directories.contains(&canonical) {
+                return true;
+            }
+        }
 
         #[cfg(feature = "urls")]
-        if self.directories.contains(&PathBuf::from(entry)) {
-            true
-        } else {
-            if let Ok(url_entry) = Url::parse(entry) {
-                return self.urls.contains(&url_entry);
-            }
-            false
+        if let Ok(url_entry) = Url::parse(entry) {
+            return self.urls.contains(&url_entry);
         }
+
+        false
     }
 
     /// Add entries to the search path, by reading them from an environment variable.
@@ -543,8 +542,6 @@ mod test {
         path.add_directory(".");
         let cwd = env::current_dir()
             .expect("Could not get current working directory").to_string_lossy().to_string();
-        println!("cwd = {}", cwd);
-        println!("path = {}", path);
         assert!(path.contains(&cwd));
     }
 
@@ -690,8 +687,11 @@ mod test {
     #[cfg(feature = "urls")]
     mod url_tests {
         use std::env;
+
         use url::Url;
+
         use FileType;
+
         use super::Simpath;
 
         const BASE_URL: &str = "https://www.ibm.com";
