@@ -540,9 +540,8 @@ mod test {
         let mut path = Simpath::new("MyName");
         assert!(path.directories().is_empty());
         path.add_directory(".");
-        assert!(path.contains(env::current_dir()
-            .expect("Could not get current working directory").to_str()
-            .expect("Could not convert path to &str")))
+        assert!(path.contains(&env::current_dir()
+            .expect("Could not get current working directory").to_string_lossy().to_string()));
     }
 
     #[test]
@@ -635,9 +634,8 @@ mod test {
         let var_name = "MyPath";
         env::set_var(var_name, ".");
         let path = Simpath::new(var_name);
-        assert!(path.contains(env::current_dir()
-            .expect("Could not get current working directory").to_str()
-            .expect("Could not convert path to &str")))
+        assert!(path.contains(&env::current_dir()
+            .expect("Could not get current working directory").to_string_lossy().to_string()));
     }
 
     #[test]
@@ -645,9 +643,8 @@ mod test {
         let var_name = "MyPath";
         env::set_var(var_name, format!(".{}/", DEFAULT_SEPARATOR_CHAR));
         let path = Simpath::new(var_name);
-        assert!(path.contains(env::current_dir()
-            .expect("Could not get current working directory").to_str()
-            .expect("Could not convert path to &str")));
+        assert!(path.contains(&env::current_dir()
+            .expect("Could not get current working directory").to_string_lossy().to_string()));
         assert!(path.contains("/"));
     }
 
@@ -656,9 +653,8 @@ mod test {
         let var_name = "MyPath";
         env::set_var(var_name, ".,/");
         let path = Simpath::new_with_separator(var_name, ',');
-        assert!(path.contains(env::current_dir()
-            .expect("Could not get current working directory").to_str()
-            .expect("Could not convert path to &str")));
+        assert!(path.contains(&env::current_dir()
+            .expect("Could not get current working directory").to_string_lossy().to_string()));
         assert!(path.contains("/"));
     }
 
