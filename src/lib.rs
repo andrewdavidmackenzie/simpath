@@ -277,8 +277,8 @@ impl Simpath {
         #[cfg(feature = "urls")]
         if file_type == FileType::Resource || file_type == FileType::Any {
             for base_url in &self.urls {
-                let url = base_url.join(file_name)
-                    .map_err(|e| Error::new(ErrorKind::NotFound, e.to_string()))?;
+                let mut url = base_url.clone();
+                url.set_path(&format!("{}/{}", url.path(), file_name.trim_start_matches('/')));
                 if Self::resource_exists(&url).is_ok() {
                     return Ok(FoundType::Resource(url));
                 }
