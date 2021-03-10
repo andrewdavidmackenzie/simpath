@@ -485,7 +485,7 @@ mod test {
     use std::fs;
     use std::io::Write;
 
-    use ::{DEFAULT_SEPARATOR_CHAR, FileType};
+    use super::{DEFAULT_SEPARATOR_CHAR, FileType};
 
     use super::Simpath;
 
@@ -670,7 +670,7 @@ mod test {
     mod url_tests {
         use std::env;
         use url::Url;
-        use FileType;
+        use super::super::FileType;
         use super::Simpath;
 
         const BASE_URL: &str = "https://www.ibm.com";
