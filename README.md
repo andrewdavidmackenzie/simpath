@@ -52,3 +52,8 @@ To remove that code and dependencies disable all default features using the `car
 * implements the `fmt::Display` trait
 * Derives `Clone`
 * Derives `Debug`
+
+# Building
+A simple Makefile exists that builds, runs `clippy` and then runs tests.
+
+Just type `make` at the command prompt.
