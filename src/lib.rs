@@ -20,7 +20,7 @@ use std::io::{Error, ErrorKind};
 use std::path::PathBuf;
 
 #[cfg(feature = "urls")]
-use curl::easy::{Easy2, Handler, WriteError};
+use curl::easy::{Handler, WriteError};
 #[cfg(feature = "urls")]
 use url::Url;
 
@@ -275,12 +275,13 @@ impl Simpath {
         }
 
         #[cfg(feature = "urls")]
+            // Look for a URL that ends with '/file_name'
         if file_type == FileType::Resource || file_type == FileType::Any {
-            for base_url in &self.urls {
-                let mut url = base_url.clone();
-                url.set_path(&format!("{}/{}", url.path(), file_name.trim_start_matches('/')));
-                if Self::resource_exists(&url).is_ok() {
-                    return Ok(FoundType::Resource(url));
+            for url in &self.urls {
+                let mut segments = url.path_segments()
+                    .ok_or(Error::new(ErrorKind::NotFound, "Could not get path segments"))?;
+                if segments.next_back() == Some(file_name) {
+                    return Ok(FoundType::Resource(url.clone()));
                 }
             }
         }
@@ -288,25 +289,6 @@ impl Simpath {
         Err(Error::new(ErrorKind::NotFound,
                        format!("Could not find type '{:?}' called '{}' in search path '{}'",
                                file_type, file_name, self.name)))
-    }
-
-    #[cfg(feature = "urls")]
-    fn resource_exists(url: &Url) -> Result<(), Error> {
-        let mut easy = Easy2::new(Collector(Vec::new()));
-        easy.nobody(true)?;
-
-        easy.url(&url.to_string())?;
-        easy.perform()?;
-        let response_code = easy.response_code()
-            .map_err(|e| Error::new(ErrorKind::NotFound, e.to_string()))?;
-
-        // Consider 301 - Permanently Moved as the resource NOT being at this Url
-        // An option to consider is asking the request library to follow the redirect.
-        match response_code {
-            200..=299 => Ok(()),
-            error_code => Err(Error::new(ErrorKind::NotFound,
-                                         format!("Response code: {} from '{}'", error_code, url)))
-        }
     }
 
     /// Add an to the search path.
@@ -687,15 +669,12 @@ mod test {
     #[cfg(feature = "urls")]
     mod url_tests {
         use std::env;
-
         use url::Url;
-
         use FileType;
-
         use super::Simpath;
 
         const BASE_URL: &str = "https://www.ibm.com";
-        const EXISTING_RESOURCE: &str = "/es-es";
+        const EXISTING_RESOURCE: &str = "es-es";
 
         #[test]
         fn create_from_env() {
@@ -730,8 +709,9 @@ mod test {
         #[test]
         fn find_existing_resource() {
             let mut search_path = Simpath::new("TEST");
-            search_path.add_url(&Url::parse(BASE_URL).expect("Could not parse Url"));
-            search_path.find_type(EXISTING_RESOURCE, FileType::Resource).expect("Could not find '/'");
+            search_path.add_url(&Url::parse(BASE_URL).expect("Could not parse Url")
+                .join(EXISTING_RESOURCE).expect("Could not join to Url"));
+            search_path.find_type(EXISTING_RESOURCE, FileType::Resource).expect("Could not find resource");
         }
 
         #[test]
