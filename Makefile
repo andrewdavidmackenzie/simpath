@@ -1,4 +1,4 @@
 all:
 	cargo build --all-features
-	cargo clippy
+	cargo clippy --all-features
 	cargo test --all-features
