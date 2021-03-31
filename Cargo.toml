@@ -1,6 +1,6 @@
 [package]
 name = "simpath"
-version = "2.2.1"
+version = "2.2.2"
 authors = ["Andrew Mackenzie <andrew@mackenzie-serres.net>"]
 description = "Search for files on a path defined in an environment variable"
 license = "MIT"
