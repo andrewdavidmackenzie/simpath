@@ -23,6 +23,7 @@ use std::path::PathBuf;
 use curl::easy::{Handler, WriteError};
 #[cfg(feature = "urls")]
 use url::Url;
+use std::collections::HashSet;
 
 #[cfg(feature = "urls")]
 struct Collector(Vec<u8>);
@@ -48,9 +49,9 @@ const DEFAULT_SEPARATOR_CHAR: char = ':';
 pub struct Simpath {
     separator: char,
     name: String,
-    directories: Vec<PathBuf>,
+    directories: HashSet<PathBuf>,
     #[cfg(feature = "urls")]
-    urls: Vec<Url>,
+    urls: HashSet<Url>,
 }
 
 /// `FileType` can be used to find an entry in a path of a specific type (`Directory`, `File`, `URL`)
@@ -115,9 +116,9 @@ impl Simpath {
         let mut search_path = Simpath {
             separator: DEFAULT_SEPARATOR_CHAR,
             name: var_name.to_string(),
-            directories: Vec::<PathBuf>::new(),
+            directories: HashSet::<PathBuf>::new(),
             #[cfg(feature = "urls")]
-            urls: Vec::<Url>::new(),
+            urls: HashSet::<Url>::new(),
         };
 
         search_path.add_from_env_var(var_name);
@@ -155,9 +156,9 @@ impl Simpath {
         let mut search_path = Simpath {
             separator,
             name: var_name.to_string(),
-            directories: Vec::<PathBuf>::new(),
+            directories: HashSet::<PathBuf>::new(),
             #[cfg(feature = "urls")]
-            urls: Vec::<Url>::new(),
+            urls: HashSet::<Url>::new(),
         };
 
         search_path.add_from_env_var(var_name);
@@ -196,7 +197,7 @@ impl Simpath {
     ///     println!("Directories in Search Path: {:?}", search_path.directories());
     /// }
     /// ```
-    pub fn directories(&self) -> &Vec<PathBuf> {
+    pub fn directories(&self) -> &HashSet<PathBuf> {
         &self.directories
     }
 
@@ -214,7 +215,7 @@ impl Simpath {
     ///     println!("URLs in Search Path: {:?}", search_path.urls());
     /// }
     /// ```
-    pub fn urls(&self) -> &Vec<Url> {
+    pub fn urls(&self) -> &HashSet<Url> {
         &self.urls
     }
 
@@ -349,7 +350,7 @@ impl Simpath {
         let path = PathBuf::from(dir);
         if path.exists() && path.is_dir() && path.read_dir().is_ok() {
             if let Ok(canonical) = path.canonicalize() {
-                self.directories.push(canonical);
+                self.directories.insert(canonical);
             }
         }
     }
@@ -371,7 +372,7 @@ impl Simpath {
     /// }
     /// ```
     pub fn add_url(&mut self, url: &Url) {
-        self.urls.push(url.clone());
+        self.urls.insert(url.clone());
     }
 
     /// Check if a search path contains an entry
@@ -525,6 +526,16 @@ mod test {
         let cwd = env::current_dir()
             .expect("Could not get current working directory").to_string_lossy().to_string();
         assert!(path.contains(&cwd));
+    }
+
+    #[test]
+    fn cannot_add_same_dir_twice() {
+        let mut path = Simpath::new("MyName");
+        assert!(path.directories().is_empty());
+        path.add_directory(".");
+        path.add_directory(".");
+        assert_eq!(path.urls().len(), 0);
+        assert_eq!(path.directories().len(), 1);
     }
 
     #[test]
@@ -690,8 +701,18 @@ mod test {
         #[test]
         fn add_url_that_exists() {
             let mut path = Simpath::new_with_separator("test", ',');
-            path.add_url(&Url::parse(BASE_URL)
-                .expect("Could not parse Url"));
+            path.add_url(&Url::parse(BASE_URL).expect("Could not parse Url"));
+            assert_eq!(path.urls().len(), 1);
+            assert_eq!(path.directories().len(), 0);
+            assert!(path.urls().contains(&Url::parse(BASE_URL)
+                .expect("Could not parse URL")));
+        }
+
+        #[test]
+        fn cannot_add_same_url_twice() {
+            let mut path = Simpath::new_with_separator("test", ',');
+            path.add_url(&Url::parse(BASE_URL).expect("Could not parse Url"));
+            path.add_url(&Url::parse(BASE_URL).expect("Could not parse Url"));
             assert_eq!(path.urls().len(), 1);
             assert_eq!(path.directories().len(), 0);
             assert!(path.urls().contains(&Url::parse(BASE_URL)
