@@ -280,7 +280,7 @@ impl Simpath {
         if file_type == FileType::Resource || file_type == FileType::Any {
             for url in &self.urls {
                 let mut segments = url.path_segments()
-                    .ok_or(Error::new(ErrorKind::NotFound, "Could not get path segments"))?;
+                    .ok_or_else(|| Error::new(ErrorKind::NotFound, "Could not get path segments"))?;
                 if segments.next_back() == Some(file_name) {
                     return Ok(FoundType::Resource(url.clone()));
                 }
