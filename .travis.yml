@@ -31,7 +31,9 @@ install:
   - rustup component add clippy
 
 script:
-  - make
+  - cargo build --all-features
+  - cargo clippy --all-features
+  - cargo test --all-features
 
 notifications:
   email:
