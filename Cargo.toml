@@ -1,6 +1,6 @@
 [package]
 name = "simpath"
-version = "2.1.5"
+version = "2.2.0"
 authors = ["Andrew Mackenzie <andrew@mackenzie-serres.net>"]
 description = "Search for files on a path defined in an environment variable"
 license = "MIT"
@@ -15,12 +15,12 @@ default = []
 urls = ["url", "curl"]
 
 [dependencies]
-url = { version = "~2.1", optional = true }
+url = { version = "~2.2", optional = true }
 curl = { version = "~0.4", optional = true }
 
 [dev-dependencies]
 tempdir = "~0.3.5"
-url = "~2.1"
+url = "~2.2"
 
 [badges]
 maintenance = {status = "actively-developed" }
