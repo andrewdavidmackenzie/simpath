@@ -262,11 +262,11 @@ impl Simpath {
                     let file = entry?;
                     if let Some(filename) = file.file_name().to_str() {
                         if filename == file_name {
-                            let metadata = file.metadata()?;
+                            let found_filetype = file.metadata()?.file_type();
                             match file_type {
                                 FileType::Any => return Ok(FoundType::File(file.path())),
-                                FileType::Directory if metadata.is_dir() => return Ok(FoundType::Directory(file.path())),
-                                FileType::File if metadata.is_file() => return Ok(FoundType::File(file.path())),
+                                FileType::Directory if found_filetype.is_dir() => return Ok(FoundType::Directory(file.path())),
+                                FileType::File if found_filetype.is_file() || found_filetype.is_symlink() => return Ok(FoundType::File(file.path())),
                                 _ => { /* keep looking */ }
                             }
                         }
@@ -534,7 +534,6 @@ mod test {
         assert!(path.directories().is_empty());
         path.add_directory(".");
         path.add_directory(".");
-        assert_eq!(path.urls().len(), 0);
         assert_eq!(path.directories().len(), 1);
     }
 
@@ -592,6 +591,38 @@ mod test {
         // Check that simpath can find the file
         assert!(path.find_type(temp_filename, FileType::File).is_ok(),
                 "Could not find 'testfile' in Path set from env var");
+
+        // clean-up
+        let _ = fs::remove_dir_all(temp_dir);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn find_link_from_env_variable() {
+        // Create a temp dir for test
+        let temp_dir = tempdir::TempDir::new("simpath").unwrap().into_path();
+
+        // Create a ENV path that includes the path to the temp dir
+        let var_name = "MYPATH";
+        env::set_var(var_name, &temp_dir);
+
+        // create a simpath from the env var
+        let path = Simpath::new(var_name);
+
+        // Create a file in the directory
+        let temp_filename = "testfile";
+        let temp_file_path = format!("{}/{}", temp_dir.display(), temp_filename);
+        let mut file = fs::File::create(&temp_file_path).unwrap();
+        file.write_all(b"test file contents").unwrap();
+
+        // Create a link to the file
+        let temp_linkname = "testlink";
+        let temp_link_path = format!("{}/{}", temp_dir.display(), temp_linkname);
+        std::os::unix::fs::symlink(temp_file_path, temp_link_path).expect("Could not create symlink");
+
+        // Check that simpath can find the file
+        assert!(path.find_type(temp_linkname, FileType::File).is_ok(),
+                "Could not find 'testlink' in Path set from env var");
 
         // clean-up
         let _ = fs::remove_dir_all(temp_dir);
