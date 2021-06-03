@@ -1,0 +1,16 @@
+tests:
+  name: ${{ matrix.make.name }} (${{ matrix.os }})
+  runs-on: ${{ matrix.os }}
+  strategy:
+    fail-fast: false
+    matrix:
+      os: [ubuntu-latest, macos-latest, windows-latest]
+      rust: [stable, beta, nightly]
+      make:
+        - name: Clippy
+          task: "check-clippy"
+        - name: Unit tests
+          task: "build-all-test run-all-unit-test"
+        - name: Doc tests
+          task: "run-all-doc-test"
+
