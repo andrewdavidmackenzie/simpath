@@ -30,7 +30,7 @@ struct Collector(Vec<u8>);
 
 #[cfg(feature = "urls")]
 impl Handler for Collector {
-    fn write(&mut self, data: &[u8]) -> std::result::Result<usize, WriteError> {
+    fn write(&mut self, data: &[u8]) -> Result<usize, WriteError> {
         self.0.extend_from_slice(data);
         Ok(data.len())
     }
@@ -466,6 +466,26 @@ impl Simpath {
                 self.add_directory(part);
             }
         }
+    }
+
+    /// Check if the path is empty, i.e. has no directories added to it, and if the "urls"
+    /// feature is enabled, that is has no urls added to it either.
+    ///
+    /// ```
+    /// extern crate simpath;
+    /// use simpath::Simpath;
+    /// use std::env;
+    ///
+    /// fn main() {
+    ///     let mut search_path = Simpath::new("Foo");
+    ///     assert!(search_path.is_empty(), "The 'Foo' SearchPath should be empty");
+    /// }
+    /// ```
+    pub fn is_empty(&self) -> bool {
+        #[cfg(not(feature = "urls"))]
+        return self.directories.is_empty();
+        #[cfg(feature = "urls")]
+        return self.directories.is_empty() && self.urls.is_empty();
     }
 }
 
