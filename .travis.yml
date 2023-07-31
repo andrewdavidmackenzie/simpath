@@ -11,8 +11,6 @@ os:
   - linux
   - windows
 
-sudo: false
-
 addons:
   apt:
     packages:

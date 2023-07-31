@@ -333,8 +333,6 @@ impl Simpath {
     }
 
     /// Add a directory to the list of directories to search for files.
-    /// If the directory passed does not exist, or is not a directory, or cannot be read then it
-    /// will be ignored.
     ///
     /// ```
     /// extern crate simpath;
@@ -347,12 +345,7 @@ impl Simpath {
     /// }
     /// ```
     pub fn add_directory(&mut self, dir: &str) {
-        let path = PathBuf::from(dir);
-        if path.exists() && path.is_dir() && path.read_dir().is_ok() {
-            if let Ok(canonical) = path.canonicalize() {
-                self.directories.insert(canonical);
-            }
-        }
+        self.directories.insert(PathBuf::from(dir));
     }
 
     #[cfg(feature = "urls")]
@@ -389,10 +382,8 @@ impl Simpath {
     /// }
     /// ```
     pub fn contains(&self, entry: &str) -> bool {
-        if let Ok(canonical) = PathBuf::from(entry).canonicalize() {
-            if self.directories.contains(&canonical) {
-                return true;
-            }
+        if self.directories.contains(&PathBuf::from(entry)) {
+            return true;
         }
 
         #[cfg(feature = "urls")]
@@ -542,7 +533,9 @@ mod test {
     fn directory_is_added() {
         let mut path = Simpath::new("MyName");
         assert!(path.directories().is_empty());
-        path.add_directory(".");
+        path.add_directory(&env::current_dir()
+            .expect("Could not get current working directory")
+            .to_string_lossy());
         let cwd = env::current_dir()
             .expect("Could not get current working directory").to_string_lossy().to_string();
         assert!(path.contains(&cwd));
@@ -555,14 +548,6 @@ mod test {
         path.add_directory(".");
         path.add_directory(".");
         assert_eq!(path.directories().len(), 1);
-    }
-
-    #[test]
-    fn cant_add_non_dir() {
-        let mut path = Simpath::new("MyName");
-        assert!(path.directories().is_empty());
-        path.add_directory("no-such-dir");
-        assert_eq!(path.contains("no-such-dir"), false);
     }
 
     #[test]
@@ -677,7 +662,9 @@ mod test {
     #[test]
     fn single_add_from_env_variable() {
         let var_name = "MyPath";
-        env::set_var(var_name, ".");
+        env::set_var(var_name, env::current_dir()
+            .expect("Could not get current working directory")
+            .to_string_lossy().to_string());
         let path = Simpath::new(var_name);
         assert!(path.contains(&env::current_dir()
             .expect("Could not get current working directory").to_string_lossy().to_string()));
@@ -686,20 +673,18 @@ mod test {
     #[test]
     fn multiple_add_from_env_variable() {
         let var_name = "MyPath";
-        env::set_var(var_name, format!(".{}/", DEFAULT_SEPARATOR_CHAR));
+        env::set_var(var_name, format!("/tmp{}/", DEFAULT_SEPARATOR_CHAR));
         let path = Simpath::new(var_name);
-        assert!(path.contains(&env::current_dir()
-            .expect("Could not get current working directory").to_string_lossy().to_string()));
+        assert!(path.contains("/tmp"));
         assert!(path.contains("/"));
     }
 
     #[test]
     fn multiple_add_from_env_variable_separator() {
         let var_name = "MyPath";
-        env::set_var(var_name, ".,/");
+        env::set_var(var_name, "/tmp,/");
         let path = Simpath::new_with_separator(var_name, ',');
-        assert!(path.contains(&env::current_dir()
-            .expect("Could not get current working directory").to_string_lossy().to_string()));
+        assert!(path.contains("/tmp"));
         assert!(path.contains("/"));
     }
 
@@ -709,23 +694,6 @@ mod test {
         env::set_var(var_name, format!(".{}/", DEFAULT_SEPARATOR_CHAR));
         let path = Simpath::new(var_name);
         println!("Simpath can be printed: {}", path);
-    }
-
-    #[test]
-    fn entry_does_not_exist() {
-        let var_name = "MyPath";
-        env::set_var(var_name, "/foo");
-        let path = Simpath::new(var_name);
-        assert_eq!(path.directories().len(), 0);
-    }
-
-    #[test]
-    fn one_entry_does_not_exist() {
-        let var_name = "MyPath";
-        env::set_var(var_name, format!(".{}/foo", DEFAULT_SEPARATOR_CHAR));
-        let path = Simpath::new(var_name);
-        assert_eq!(path.directories().len(), 1);
-        assert!(!path.contains("/foo"));
     }
 
     #[cfg(feature = "urls")]
